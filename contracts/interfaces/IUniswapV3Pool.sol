@@ -8,16 +8,7 @@ interface IUniswapV3Pool {
         address payer;
     }
 
-    function slot0()
-        external
-        view
-        returns (
-            uint160 sqrtPriceX96,
-            int24 tick,
-            uint16 observationIndex,
-            uint16 observationCardinality,
-            uint16 observationCardinalityNext
-        );
+    function slot0() external view returns (uint160 sqrtPriceX96, int24 tick);
 
     function factory() external view returns (address);
 
@@ -29,7 +20,9 @@ interface IUniswapV3Pool {
 
     function fee() external view returns (uint24);
 
-    function positions(bytes32 key)
+    function positions(
+        bytes32 key
+    )
         external
         view
         returns (

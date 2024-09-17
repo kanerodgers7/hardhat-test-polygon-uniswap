@@ -22,7 +22,9 @@ contract UniswapV3Manager is IUniswapV3Manager {
         factory = factory_;
     }
 
-    function getPosition(GetPositionParams calldata params)
+    function getPosition(
+        GetPositionParams calldata params
+    )
         public
         view
         returns (
@@ -52,13 +54,26 @@ contract UniswapV3Manager is IUniswapV3Manager {
         );
     }
 
-    function mint(MintParams calldata params)
-        public
-        returns (uint256 amount0, uint256 amount1)
-    {
+    function mint(
+        MintParams calldata params
+    ) public returns (uint256 amount0, uint256 amount1) {
+        UniswapV3Factory factoryContract = UniswapV3Factory(factory);
+        if (
+            factoryContract.getPoolAddress(
+                params.tokenA,
+                params.tokenB,
+                params.fee
+            ) == address(0)
+        ) {
+            factoryContract.createPool(
+                params.tokenA,
+                params.tokenB,
+                params.fee
+            );
+        }
         IUniswapV3Pool pool = getPool(params.tokenA, params.tokenB, params.fee);
 
-        (uint160 sqrtPriceX96, , , , ) = pool.slot0();
+        (uint160 sqrtPriceX96, ) = pool.slot0();
         uint160 sqrtPriceLowerX96 = TickMath.getSqrtRatioAtTick(
             params.lowerTick
         );
@@ -92,10 +107,9 @@ contract UniswapV3Manager is IUniswapV3Manager {
             revert SlippageCheckFailed(amount0, amount1);
     }
 
-    function swapSingle(SwapSingleParams calldata params)
-        public
-        returns (uint256 amountOut)
-    {
+    function swapSingle(
+        SwapSingleParams calldata params
+    ) public returns (uint256 amountOut) {
         amountOut = _swap(
             params.amountIn,
             msg.sender,
@@ -179,16 +193,12 @@ contract UniswapV3Manager is IUniswapV3Manager {
         address token1,
         uint24 fee
     ) internal view returns (IUniswapV3Pool pool) {
-        UniswapV3Factory factoryContract = UniswapV3Factory(factory);
         (token0, token1) = token0 < token1
             ? (token0, token1)
             : (token1, token0);
         pool = IUniswapV3Pool(
             PoolAddress.computeAddress(factory, token0, token1, fee)
         );
-        if (pool == address(0)) {
-            pool = factoryContract.createPool(tokenA, tokenB, fee);
-        }
     }
 
     function uniswapV3MintCallback(

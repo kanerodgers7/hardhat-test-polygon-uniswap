@@ -2,7 +2,7 @@
 pragma solidity ^0.8.14;
 
 import "./FixedPoint96.sol";
-import "prb-math/PRBMath.sol";
+import "prb-math/contracts/PRBMath.sol";
 
 library Math {
     /// @notice Calculates amount0 delta between two prices
@@ -176,11 +176,10 @@ library Math {
         }
     }
 
-    function divRoundingUp(uint256 numerator, uint256 denominator)
-        internal
-        pure
-        returns (uint256 result)
-    {
+    function divRoundingUp(
+        uint256 numerator,
+        uint256 denominator
+    ) internal pure returns (uint256 result) {
         assembly {
             result := add(
                 div(numerator, denominator),

@@ -4,7 +4,6 @@ pragma solidity ^0.8.14;
 import "forge-std/Test.sol";
 
 import "../UniswapV3Pool.sol";
-import "../UniswapV3NFTManager.sol";
 
 import "./ERC20Mintable.sol";
 
@@ -18,7 +17,7 @@ abstract contract Assertions is Test {
     }
 
     function assertPoolState(ExpectedPoolState memory expected) internal {
-        (uint160 sqrtPriceX96, int24 currentTick, , , ) = expected.pool.slot0();
+        (uint160 sqrtPriceX96, int24 currentTick) = expected.pool.slot0();
         assertEq(sqrtPriceX96, expected.sqrtPriceX96, "invalid current sqrtP");
         assertEq(currentTick, expected.tick, "invalid current tick");
         assertEq(
@@ -365,58 +364,6 @@ abstract contract Assertions is Test {
             params.tokensOwed[1],
             "incorrect position tokens owed for token1"
         );
-    }
-
-    struct ExpectedNFTs {
-        UniswapV3NFTManager nft;
-        address owner;
-        ExpectedNFT[] tokens;
-    }
-
-    struct ExpectedNFT {
-        uint256 id;
-        address pool;
-        int24 lowerTick;
-        int24 upperTick;
-    }
-
-    function assertNFTs(ExpectedNFTs memory expected) internal {
-        assertEq(
-            expected.nft.balanceOf(address(expected.owner)),
-            expected.tokens.length,
-            "invalid NFT balance"
-        );
-        assertEq(
-            expected.nft.totalSupply(),
-            expected.tokens.length,
-            "invalid NFT total supply"
-        );
-
-        for (uint256 i = 0; i < expected.tokens.length; ++i) {
-            ExpectedNFT memory token = expected.tokens[i];
-
-            assertEq(
-                expected.nft.ownerOf(token.id),
-                expected.owner,
-                "invalid NFT owner"
-            );
-
-            (address pool, int24 lowerTick, int24 upperTick) = expected
-                .nft
-                .positions(token.id);
-
-            assertEq(pool, token.pool, "invalid NFT position pool");
-            assertEq(
-                lowerTick,
-                token.lowerTick,
-                "invalid NFT position lower tick"
-            );
-            assertEq(
-                upperTick,
-                token.upperTick,
-                "invalid NFT position upper tick"
-            );
-        }
     }
 
     // function assertTokenURI(

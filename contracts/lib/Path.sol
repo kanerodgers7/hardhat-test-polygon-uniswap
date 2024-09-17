@@ -1,14 +1,13 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity ^0.8.14;
 
-import "bytes-utils/BytesLib.sol";
+import "solidity-bytes-utils/contracts/BytesLib.sol";
 
 library BytesLibExt {
-    function toUint24(bytes memory _bytes, uint256 _start)
-        internal
-        pure
-        returns (uint24)
-    {
+    function toUint24(
+        bytes memory _bytes,
+        uint256 _start
+    ) internal pure returns (uint24) {
         require(_bytes.length >= _start + 3, "toUint24_outOfBounds");
         uint24 tempUint;
 
@@ -45,11 +44,9 @@ library Path {
         return (path.length - ADDR_SIZE) / NEXT_OFFSET;
     }
 
-    function getFirstPool(bytes memory path)
-        internal
-        pure
-        returns (bytes memory)
-    {
+    function getFirstPool(
+        bytes memory path
+    ) internal pure returns (bytes memory) {
         return path.slice(0, POP_OFFSET);
     }
 
@@ -57,15 +54,9 @@ library Path {
         return path.slice(NEXT_OFFSET, path.length - NEXT_OFFSET);
     }
 
-    function decodeFirstPool(bytes memory path)
-        internal
-        pure
-        returns (
-            address tokenIn,
-            address tokenOut,
-            uint24 fee
-        )
-    {
+    function decodeFirstPool(
+        bytes memory path
+    ) internal pure returns (address tokenIn, address tokenOut, uint24 fee) {
         tokenIn = path.toAddress(0);
         fee = path.toUint24(ADDR_SIZE);
         tokenOut = path.toAddress(NEXT_OFFSET);

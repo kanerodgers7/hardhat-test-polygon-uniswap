@@ -28,6 +28,14 @@ contract UniswapV3Factory is IUniswapV3PoolDeployer {
         fees[3000] = 60;
     }
 
+    function getPoolAddress(
+        address tokenX,
+        address tokenY,
+        uint24 fee
+    ) public view returns (address) {
+        return pools[tokenX][tokenY][fee];
+    }
+
     function createPool(
         address tokenX,
         address tokenY,

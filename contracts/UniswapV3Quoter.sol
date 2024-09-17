@@ -23,7 +23,10 @@ contract UniswapV3Quoter {
         factory = factory_;
     }
 
-    function quote(bytes memory path, uint256 amountIn)
+    function quote(
+        bytes memory path,
+        uint256 amountIn
+    )
         public
         returns (
             uint256 amountOut,
@@ -67,13 +70,11 @@ contract UniswapV3Quoter {
         }
     }
 
-    function quoteSingle(QuoteSingleParams memory params)
+    function quoteSingle(
+        QuoteSingleParams memory params
+    )
         public
-        returns (
-            uint256 amountOut,
-            uint160 sqrtPriceX96After,
-            int24 tickAfter
-        )
+        returns (uint256 amountOut, uint160 sqrtPriceX96After, int24 tickAfter)
     {
         IUniswapV3Pool pool = getPool(
             params.tokenIn,
@@ -113,9 +114,8 @@ contract UniswapV3Quoter {
             ? uint256(-amount1Delta)
             : uint256(-amount0Delta);
 
-        (uint160 sqrtPriceX96After, int24 tickAfter, , , ) = IUniswapV3Pool(
-            pool
-        ).slot0();
+        (uint160 sqrtPriceX96After, int24 tickAfter) = IUniswapV3Pool(pool)
+            .slot0();
 
         assembly {
             let ptr := mload(0x40)

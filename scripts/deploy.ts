@@ -1,81 +1,38 @@
-import * as fs from 'fs';
-import hre, { ethers } from "hardhat";
+import { ethers } from "hardhat";
+require("dotenv").config();
 
-import {
-  UniswapV3Factory,
-  UniswapV3Quoter,
-  UniswapV3Manager,
-  // UniswapV3Pool,
-} from '../typechain/pulse';
-
-const addressFile = 'contract_addresses.md';
-
-// const verify = async (addr: string, args: any[]) => {
-//   try {
-//     await hre.run('verify:verify', {
-//       address: addr,
-//       constructorArguments: args
-//     });
-//   } catch (ex: any) {
-//     if (ex.toString().indexOf('Already Verified') == -1) {
-//       throw ex;
-//     }
-//   }
-// };
 
 async function main() {
-  console.log('Starting deployments');
-  const accounts = await hre.ethers.getSigners();
+  const [deployer] = await ethers.getSigners();
+  const tokenName = process.env.TOKEN_NAME || "PSToken";
+  const tokenSymbol = process.env.TOKEN_SYMBOL || "PST-AMZ";
+  const feeAddress = process.env.FEE_ADDRESS || deployer.address;
+  const tokenDecimal = process.env.TOKEN_DECIMAL || 18;
 
-  const deployer = accounts[0];
+  console.log("Deploying contracts with the account:", deployer.address);
 
+  const balance = await deployer.provider.getBalance(deployer.address);
+  console.log("Account balance:", balance.toString());
+  
   const UniswapV3FactoryFact = await ethers.getContractFactory('UniswapV3Factory');
   const UniswapV3QuoterFact = await ethers.getContractFactory('UniswapV3Quoter');
   const UniswapV3ManagerFact = await ethers.getContractFactory('UniswapV3Manager');
-  // const UniswapV3PoolFact = await ethers.getContractFactory('UniswapV3Pool');
 
-  const uniswapV3Factory = (await UniswapV3FactoryFact.connect(
-    deployer
-  ).deploy()) as UniswapV3Factory;
-  await uniswapV3Factory.deployed();
+  // const uniswapV3Factory = await UniswapV3FactoryFact.deploy();
+  // await uniswapV3Factory.waitForDeployment();
 
-  const uniswapV3Quoter = (await UniswapV3QuoterFact.connect(deployer).deploy([
-    uniswapV3Factory.address
-  ])) as UniswapV3Quoter;
-  await uniswapV3Quoter.deployed();
+  // console.log("UniswapV3Factory deployed to:", uniswapV3Factory.target);
+  
+  // const uniswapV3Quoter = await UniswapV3QuoterFact.deploy(uniswapV3Factory.target);
+  // await uniswapV3Quoter.waitForDeployment();
 
-  const uniswapV3Manager = (await UniswapV3ManagerFact.connect(deployer).deploy([
-    uniswapV3Factory.address
-  ])) as UniswapV3Manager;
-  await uniswapV3Manager.deployed();
+  // console.log("UniswapV3QuoterFact deployed to:", uniswapV3Quoter.target);
 
-  const writeAddr = (addr: string, name: string) => {
-    fs.appendFileSync(
-      addressFile,
-      `${name}: [https://goerli.etherscan.io/address/${addr}](https://goerli.etherscan.io/address/${addr})<br/>`
-    );
-  };
+  const uniswapV3Manager = await UniswapV3ManagerFact.deploy("0x8424BB4116271e4ADDdAb18aD53e01d6057fff95");
+  await uniswapV3Manager.waitForDeployment();
 
-  if (fs.existsSync(addressFile)) {
-    fs.rmSync(addressFile);
-  }
-
-  fs.appendFileSync(
-    addressFile,
-    'This file contains the latest test deployment addresses in the Goerli network<br/>'
-  );
-  writeAddr(uniswapV3Factory.address, 'UniswapV3Factory');
-  writeAddr(uniswapV3Quoter.address, 'UniswapV3Quoter');
-  writeAddr(uniswapV3Manager.address, 'UniswapV3Manager');
-
-  console.log('Deployments done, waiting for etherscan verifications');
-  // Wait for the contracts to be propagated inside Etherscan
-  await new Promise((f) => setTimeout(f, 60000));
-
-  // await verify(uniswapV3Factory.address, []);
-  // await verify(uniswapV3Quoter.address, [[uniswapV3Factory.address]]);
-  // await verify(uniswapV3Manager.address, [[uniswapV3Factory.address]]);
-
+  console.log("UniswapV3ManagerFact deployed to:", uniswapV3Manager.target);
+  
   console.log('All done');
 }
 
