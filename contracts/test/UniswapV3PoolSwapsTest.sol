@@ -21,8 +21,6 @@ contract UniswapV3PoolSwapsTest is Test, UniswapV3PoolUtils {
     bool transferInSwapCallback = true;
     bytes extra;
 
-    error MintError(int256);
-
     function setUp(address _weth, address _usdc, address _factory) public {
         weth = _weth; //new ERC20Mintable("Ether", "ETH", 18);
         usdc = _usdc; //new ERC20Mintable("USDC", "USDC", 18);

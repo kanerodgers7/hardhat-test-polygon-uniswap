@@ -266,6 +266,8 @@ contract UniswapV3Pool is IUniswapV3Pool {
         }
     }
 
+    error MintError(uint256, uint256);
+
     function mint(
         address owner,
         int24 lowerTick,
@@ -304,14 +306,6 @@ contract UniswapV3Pool is IUniswapV3Pool {
             amount1,
             data
         );
-        // revert InsufficientWithParam(
-        //     token0,
-        //     token1,
-        //     amount0,
-        //     amount1,
-        //     balance0(),
-        //     balance1()
-        // );
 
         if (amount0 > 0 && balance0Before + amount0 > balance0())
             revert InsufficientInputAmount();

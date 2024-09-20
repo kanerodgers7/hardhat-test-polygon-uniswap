@@ -10,6 +10,14 @@ import "./ERC20Mintable.sol";
 import "./TestUtils.sol";
 
 contract UniswapV3QuoterTest is Test, TestUtils {
+    // ERC20Mintable weth;
+    // ERC20Mintable usdc;
+    // ERC20Mintable uni;
+    // UniswapV3Factory factory;
+    // UniswapV3Pool wethUSDC;
+    // UniswapV3Pool wethUNI;
+    // UniswapV3Manager manager;
+    // UniswapV3Quoter quoter;
     address weth;
     address usdc;
     address uni;
@@ -18,7 +26,8 @@ contract UniswapV3QuoterTest is Test, TestUtils {
     address wethUNI;
     address manager;
     address quoter;
-    address temp;
+
+    event logError();
 
     function setUp(
         address _weth,
@@ -32,24 +41,6 @@ contract UniswapV3QuoterTest is Test, TestUtils {
         factory = _factory; //new UniswapV3Factory();
     }
 
-    uint256 public data;
-
-    function setData(uint256 _data) public {
-        data = _data;
-    }
-
-    function setAddress(address _address) public {
-        temp = _address;
-    }
-
-    function getData() public view returns (uint256) {
-        return data;
-    }
-
-    function getAddress() public view returns (address) {
-        return temp;
-    }
-
     function processing() public {
         uint256 wethBalance = 100 ether;
         uint256 usdcBalance = 1000000 ether;
@@ -59,14 +50,14 @@ contract UniswapV3QuoterTest is Test, TestUtils {
         ERC20Mintable(usdc).mint(address(this), usdcBalance);
         ERC20Mintable(uni).mint(address(this), uniBalance);
 
-        manager = address(new UniswapV3Manager(factory));
-
         wethUSDC = address(
             deployPool(UniswapV3Factory(factory), weth, usdc, 3000, 5000)
         );
         wethUNI = address(
             deployPool(UniswapV3Factory(factory), weth, uni, 3000, 10)
         );
+
+        manager = address(new UniswapV3Manager(factory));
 
         ERC20Mintable(weth).approve(manager, wethBalance);
         ERC20Mintable(usdc).approve(manager, usdcBalance);

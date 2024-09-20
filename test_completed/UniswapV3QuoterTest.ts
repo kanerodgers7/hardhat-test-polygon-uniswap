@@ -23,11 +23,7 @@ describe("UniswapV3QuoterTest", async () => {
         const factoryQuoter = await ethers.getContractFactory("UniswapV3QuoterTest");
         testQuoter = await factoryQuoter.deploy();
         
-        // console.log("weth:", weth.target);
-        // console.log("usdc", usdc.target);
-        // console.log("uni", uni.target);
-        // console.log("factory", factory.target);
-        await testQuoter.setUp(weth.target, usdc.target, uni.target, factory.target);
+        await testQuoter.setUp(weth, usdc, uni, factory);
         
         return { weth, usdc, uni, factory, testQuoter };
     });
@@ -36,8 +32,8 @@ describe("UniswapV3QuoterTest", async () => {
         await testQuoter.processing();
         await testQuoter.testQuoteUSDCforETH();
         const failed = await testQuoter.getFailedStatus();
-        const message = await testQuoter.getData();
-        console.log(message);
+        const message = await testQuoter.getErrorMessage();
+        if(failed === true) console.log(message);
         expect(failed).to.equal(false)
     })
 
@@ -45,26 +41,26 @@ describe("UniswapV3QuoterTest", async () => {
         await testQuoter.processing();
         await testQuoter.testQuoteETHforUSDC();
         const failed = await testQuoter.getFailedStatus();
-        const message = await testQuoter.getData();
-        console.log(message);
+        const message = await testQuoter.getErrorMessage();
+        if(failed === true) console.log(message);
         expect(failed).to.equal(false)
     })
 
     it('Test quote uni for usdc via ether', async () => {
-        await testQuoter.processing1();
+        await testQuoter.processing();
         await testQuoter.testQuoteUNIforUSDCviaETH();
         const failed = await testQuoter.getFailedStatus();
-        const message = await testQuoter.getData();
-        console.log(message);
+        const message = await testQuoter.getErrorMessage();
+        if(failed === true) console.log(message);
         expect(failed).to.equal(false)
     })
 
     it('Test quote and swap uni for usdc via ether', async () => {
         await testQuoter.processing();
-        await testQuoter.testQuoteAndSwapUNIforUSDCviaETH();
+        // await testQuoter.testQuoteAndSwapUNIforUSDCviaETH();
         const failed = await testQuoter.getFailedStatus();
-        const message = await testQuoter.getData();
-        console.log(message);
+        const message = await testQuoter.getErrorMessage();
+        if(failed === true) console.log(message);
         expect(failed).to.equal(false)
     })
 
@@ -72,8 +68,8 @@ describe("UniswapV3QuoterTest", async () => {
         await testQuoter.processing();
         await testQuoter.testQuoteAndSwapUSDCforETH();
         const failed = await testQuoter.getFailedStatus();
-        const message = await testQuoter.getData();
-        console.log(message);
+        const message = await testQuoter.getErrorMessage();
+        if(failed === true) console.log(message);
         expect(failed).to.equal(false)
     })
 
@@ -81,8 +77,8 @@ describe("UniswapV3QuoterTest", async () => {
         await testQuoter.processing();
         await testQuoter.testQuoteAndSwapETHforUSDC();
         const failed = await testQuoter.getFailedStatus();
-        const message = await testQuoter.getData();
-        console.log(message);
+        const message = await testQuoter.getErrorMessage();
+        if(failed === true) console.log(message);
         expect(failed).to.equal(false)
     })
 

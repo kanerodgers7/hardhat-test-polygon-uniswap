@@ -60,6 +60,16 @@ abstract contract TestUtils is Test, Assertions {
             );
     }
 
+    // function sqrtPSmall(uint256 price) internal pure returns (uint160) {
+    //     return
+    //         uint160(
+    //             int160(
+    //                 ABDKMath64x64.sqrt(int128(int256((1 << 64) / price))) <<
+    //                     (FixedPoint96.RESOLUTION - 64)
+    //             )
+    //         );
+    // }
+
     // Calculates sqrtP from price with tick spacing equal to 60;
     function sqrtP60(uint256 price) internal pure returns (uint160) {
         return TickMath.getSqrtRatioAtTick(tick60(price));
@@ -110,6 +120,10 @@ abstract contract TestUtils is Test, Assertions {
         address token1_,
         address payer
     ) internal pure returns (bytes memory) {
+        (token0_, token1_) = (token0_ < token1_)
+            ? (token0_, token1_)
+            : (token1_, token0_);
+
         return
             abi.encode(
                 IUniswapV3Pool.CallbackData({
@@ -171,7 +185,9 @@ abstract contract TestUtils is Test, Assertions {
         uint256 currentPrice
     ) internal returns (UniswapV3Pool pool) {
         pool = UniswapV3Pool(factory.createPool(token0, token1, fee));
+        // if (token0 < token1)
         pool.initialize(sqrtP(currentPrice));
+        // else pool.initialize(sqrtPSmall(currentPrice));
     }
 
     function getHEVMData() external view returns (bool) {

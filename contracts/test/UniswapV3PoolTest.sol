@@ -1172,6 +1172,8 @@ contract UniswapV3PoolTest is Test, UniswapV3PoolUtils {
     // INTERNAL
     //
     ////////////////////////////////////////////////////////////////////////////
+    error MintError(address, address, uint256, uint256);
+
     function setupPool(
         PoolParams memory params
     )

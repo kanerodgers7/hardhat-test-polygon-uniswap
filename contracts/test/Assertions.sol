@@ -67,22 +67,32 @@ abstract contract Assertions is Test {
         uint256 poolBalance1;
     }
 
+    error MintabError(uint256 userBalance0, uint256 userBalance1);
+
     function assertBalances(ExpectedBalances memory expected) internal {
         // assertEq(
         //     expected.tokens[0].balanceOf(address(this)),
         //     expected.userBalance0,
         //     "incorrect token0 balance of user"
         // );
-        if (expected.tokens[0].balanceOf(address(this)) != expected.userBalance0) {
+        if (
+            expected.tokens[0].balanceOf(address(this)) != expected.userBalance0
+        ) {
             setFailedStatus(true, "incorrect token0 balance of user");
-            return;
+            revert MintabError(
+                expected.tokens[0].balanceOf(address(this)),
+                expected.userBalance0
+            );
+            // return;
         }
         // assertEq(
         //     expected.tokens[1].balanceOf(address(this)),
         //     expected.userBalance1,
         //     "incorrect token1 balance of user"
         // );
-        if (expected.tokens[1].balanceOf(address(this)) != expected.userBalance1) {
+        if (
+            expected.tokens[1].balanceOf(address(this)) != expected.userBalance1
+        ) {
             setFailedStatus(true, "incorrect token1 balance of user");
             return;
         }
@@ -92,7 +102,10 @@ abstract contract Assertions is Test {
         //     expected.poolBalance0,
         //     "incorrect token0 balance of pool"
         // );
-        if (expected.tokens[0].balanceOf(address(expected.pool)) != expected.poolBalance0) {
+        if (
+            expected.tokens[0].balanceOf(address(expected.pool)) !=
+            expected.poolBalance0
+        ) {
             setFailedStatus(true, "incorrect token0 balance of pool");
             return;
         }
@@ -101,7 +114,10 @@ abstract contract Assertions is Test {
         //     expected.poolBalance1,
         //     "incorrect token1 balance of pool"
         // );
-        if (expected.tokens[1].balanceOf(address(expected.pool)) != expected.poolBalance1) {
+        if (
+            expected.tokens[1].balanceOf(address(expected.pool)) !=
+            expected.poolBalance1
+        ) {
             setFailedStatus(true, "incorrect token0 balance of pool");
             return;
         }

@@ -276,13 +276,13 @@ contract UniswapV3ManagerTest is Test, TestUtils {
                 usdcBalance: 15000 ether,
                 currentPrice: 5000,
                 mints: mintParams(
-                    mintParams(4545, 5500, 1 ether, 5000 ether)
-                    // ,mintParams(
-                    //     4000,
-                    //     6250,
-                    //     (1 ether * 75) / 100,
-                    //     (5000 ether * 75) / 100
-                    // )
+                    mintParams(4545, 5500, 1 ether, 5000 ether),
+                    mintParams(
+                        4000,
+                        6250,
+                        (1 ether * 75) / 100,
+                        (5000 ether * 75) / 100
+                    )
                 ),
                 transferInMintCallback: true,
                 transferInSwapCallback: true,
