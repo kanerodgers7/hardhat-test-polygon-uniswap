@@ -45,6 +45,20 @@ contract UniswapV3ManagerTest is Test, TestUtils {
         extra = encodeExtra(weth, usdc, address(this));
     }
 
+    function compareStrings(
+        string memory a,
+        string memory b
+    ) public pure returns (bool) {
+        return keccak256(abi.encodePacked(a)) == keccak256(abi.encodePacked(b));
+    }
+
+    function compareBytes(
+        bytes memory a,
+        bytes memory b
+    ) public pure returns (bool) {
+        return keccak256(a) == keccak256(b);
+    }
+
     function testMintInRange() public {
         (
             IUniswapV3Manager.MintParams[] memory mints,
@@ -460,13 +474,20 @@ contract UniswapV3ManagerTest is Test, TestUtils {
         {
             // Handle successful pool creation
             setFailedStatus(true, "Unexpected error");
-        } catch Error(string memory) {
+        } catch Error(string memory reason) {
             // This is executed in case of a revert with a reason string
-            setFailedStatus(true, "Unexpected error with reason");
+            if (!compareStrings(reason, "T"))
+                setFailedStatus(
+                    true,
+                    "Unexpected error with unexpected reason"
+                );
         } catch (bytes memory) {
+            setFailedStatus(true, "Unexpected error without reason");
             // This is executed in case of a revert without a reason string
         }
     }
+
+    error MintERror(bytes);
 
     function testMintInvalidTickRangeUpper() public {
         pool = deployPool(UniswapV3Factory(factory), weth, usdc, 3000, 1);
@@ -491,10 +512,15 @@ contract UniswapV3ManagerTest is Test, TestUtils {
         {
             // Handle successful pool creation
             setFailedStatus(true, "Unexpected error");
-        } catch Error(string memory) {
+        } catch Error(string memory reason) {
             // This is executed in case of a revert with a reason string
-            setFailedStatus(true, "Unexpected error with reason");
+            if (!compareStrings(reason, "T"))
+                setFailedStatus(
+                    true,
+                    "Unexpected error with unexpected reason"
+                );
         } catch (bytes memory) {
+            setFailedStatus(true, "Unexpected error without reason");
             // This is executed in case of a revert without a reason string
         }
     }
@@ -524,8 +550,14 @@ contract UniswapV3ManagerTest is Test, TestUtils {
         } catch Error(string memory) {
             // This is executed in case of a revert with a reason string
             setFailedStatus(true, "Unexpected error with reason");
-        } catch (bytes memory) {
+        } catch (bytes memory reason) {
+            // setFailedStatus(true, "Unexpected error without reason");
             // This is executed in case of a revert without a reason string
+            if (compareBytes("0x10074548", reason))
+                setFailedStatus(
+                    true,
+                    "Unexpected error with unexpected reason"
+                );
         }
     }
 
@@ -568,20 +600,6 @@ contract UniswapV3ManagerTest is Test, TestUtils {
         //     encodeSlippageCheckFailed(0.987078348444137445 ether, 5000 ether)
         // );
 
-        UniswapV3Manager(manager).mint(
-            IUniswapV3Manager.MintParams({
-                tokenA: weth,
-                tokenB: usdc,
-                fee: 3000,
-                lowerTick: tick60(4545),
-                upperTick: tick60(5500),
-                amount0Desired: amount0,
-                amount1Desired: amount1,
-                amount0Min: amount0,
-                amount1Min: amount1
-            })
-        );
-
         try
             UniswapV3Manager(manager).mint(
                 IUniswapV3Manager.MintParams({
@@ -592,8 +610,8 @@ contract UniswapV3ManagerTest is Test, TestUtils {
                     upperTick: tick60(5500),
                     amount0Desired: amount0,
                     amount1Desired: amount1,
-                    amount0Min: (amount0 * 98) / 100,
-                    amount1Min: (amount1 * 98) / 100
+                    amount0Min: amount0,
+                    amount1Min: amount1
                 })
             )
         {
@@ -602,9 +620,29 @@ contract UniswapV3ManagerTest is Test, TestUtils {
         } catch Error(string memory) {
             // This is executed in case of a revert with a reason string
             setFailedStatus(true, "Unexpected error with reason");
-        } catch (bytes memory) {
+        } catch (bytes memory reason) {
             // This is executed in case of a revert without a reason string
+            if (
+                compareBytes(
+                    "0xa8f6c8d00000000000000000000000000000000000000000000000000db2ce87347df7e500000000000000000000000000000000000000000000010f0cf064dd59200000",
+                    reason
+                )
+            ) setFailedStatus(true, "Unexpected error with unexpected reason");
         }
+
+        UniswapV3Manager(manager).mint(
+            IUniswapV3Manager.MintParams({
+                tokenA: weth,
+                tokenB: usdc,
+                fee: 3000,
+                lowerTick: tick60(4545),
+                upperTick: tick60(5500),
+                amount0Desired: amount0,
+                amount1Desired: amount1,
+                amount0Min: (amount0 * 98) / 100,
+                amount1Min: (amount1 * 98) / 100
+            })
+        );
     }
 
     function testSwapBuyEth() public {
@@ -1050,8 +1088,14 @@ contract UniswapV3ManagerTest is Test, TestUtils {
         } catch Error(string memory) {
             // This is executed in case of a revert with a reason string
             setFailedStatus(true, "Unexpected error with reason");
-        } catch (bytes memory) {
+        } catch (bytes memory reason) {
             // This is executed in case of a revert without a reason string
+            if (
+                compareBytes(
+                    "0x4323a555",
+                    reason
+                )
+            ) setFailedStatus(true, "Unexpected error with unexpected reason");
         }
     }
 
@@ -1089,8 +1133,14 @@ contract UniswapV3ManagerTest is Test, TestUtils {
         } catch Error(string memory) {
             // This is executed in case of a revert with a reason string
             setFailedStatus(true, "Unexpected error with reason");
-        } catch (bytes memory) {
+        } catch (bytes memory reason) {
             // This is executed in case of a revert without a reason string
+            if (
+                compareBytes(
+                    "0x4323a555",
+                    reason
+                )
+            ) setFailedStatus(true, "Unexpected error with unexpected reason");
         }
     }
 
@@ -1124,8 +1174,14 @@ contract UniswapV3ManagerTest is Test, TestUtils {
         } catch Error(string memory) {
             // This is executed in case of a revert with a reason string
             setFailedStatus(true, "Unexpected error with reason");
-        } catch (bytes memory) {
+        } catch (bytes memory reason) {
             // This is executed in case of a revert without a reason string
+            if (
+                compareBytes(
+                    "0x4e487b710000000000000000000000000000000000000000000000000000000000000011",
+                    reason
+                )
+            ) setFailedStatus(true, "Unexpected error with unexpected reason");
         }
     }
 

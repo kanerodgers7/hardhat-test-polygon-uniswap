@@ -13,8 +13,10 @@ describe("UniswapV3PoolTest", async () => {
     
     beforeEach(async function () {
         const factoryERC20 = await ethers.getContractFactory("ERC20Mintable");
-        weth = await factoryERC20.deploy("USDC", "USDC", 18) as any;
-        usdc = await factoryERC20.deploy("Ether", "ETH", 18) as any;
+        do {
+            weth = await factoryERC20.deploy("USDC", "USDC", 18) as any;
+            usdc = await factoryERC20.deploy("Ether", "ETH", 18) as any;
+        } while(weth.target.toUpperCase() > usdc.target.toUpperCase());
 
         const factoryFactory = await ethers.getContractFactory("UniswapV3Factory");
         factory = await factoryFactory.deploy();
@@ -23,6 +25,9 @@ describe("UniswapV3PoolTest", async () => {
         testPoolSwap = await factoryTestManager.deploy();
 
         await testPoolSwap.setUp(weth, usdc, factory);
+
+        // console.log("weth:", weth.target);
+        // console.log("usdc:", usdc.target);
 
         return {weth, usdc, factory, testPoolSwap};
     });
@@ -58,7 +63,7 @@ describe("UniswapV3PoolTest", async () => {
         await testPoolSwap.testMintRangeAbove();
         const failed = await testPoolSwap.getFailedStatus();
         const message = await testPoolSwap.getErrorMessage();
-        // if(failed === true) console.log(message);
+        if(failed === true) console.log(message);
         expect(failed).to.equal(false)
     })
 

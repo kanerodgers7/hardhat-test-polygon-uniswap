@@ -13,8 +13,10 @@ describe("UniswapV3PoolSwapsTest", async () => {
     
     beforeEach(async function () {
         const factoryERC20 = await ethers.getContractFactory("ERC20Mintable");
-        weth = await factoryERC20.deploy("USDC", "USDC", 18) as any;
-        usdc = await factoryERC20.deploy("Ether", "ETH", 18) as any;
+        do {
+            weth = await factoryERC20.deploy("USDC", "USDC", 18) as any;
+            usdc = await factoryERC20.deploy("Ether", "ETH", 18) as any;
+        } while(weth.target.toUpperCase() > usdc.target.toUpperCase());
 
         const factoryFactory = await ethers.getContractFactory("UniswapV3Factory");
         factory = await factoryFactory.deploy();
