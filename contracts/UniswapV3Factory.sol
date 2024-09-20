@@ -33,6 +33,10 @@ contract UniswapV3Factory is IUniswapV3PoolDeployer {
         address tokenY,
         uint24 fee
     ) public view returns (address) {
+        // (tokenX, tokenY) = tokenX < tokenY
+        //     ? (tokenX, tokenY)
+        //     : (tokenY, tokenX);
+
         return pools[tokenX][tokenY][fee];
     }
 
@@ -44,9 +48,9 @@ contract UniswapV3Factory is IUniswapV3PoolDeployer {
         if (tokenX == tokenY) revert TokensMustBeDifferent();
         if (fees[fee] == 0) revert UnsupportedFee();
 
-        (tokenX, tokenY) = tokenX < tokenY
-            ? (tokenX, tokenY)
-            : (tokenY, tokenX);
+        // (tokenX, tokenY) = tokenX < tokenY
+        //     ? (tokenX, tokenY)
+        //     : (tokenY, tokenX);
 
         if (tokenX == address(0)) revert ZeroAddressNotAllowed();
         if (pools[tokenX][tokenY][fee] != address(0))

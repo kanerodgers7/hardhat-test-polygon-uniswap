@@ -52,6 +52,9 @@ const config = {
       accounts: [process.env.PRIVATE_KEY],
       gasPrice: 30000000000,
     },
+    hardhat: {
+      allowUnlimitedContractSize: true
+    }
   },
   etherscan: {
     apiKey: {

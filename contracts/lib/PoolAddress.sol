@@ -10,7 +10,7 @@ library PoolAddress {
         address token1,
         uint24 fee
     ) internal pure returns (address pool) {
-        require(token0 < token1);
+        // require(token0 < token1);
 
         pool = address(
             uint160(

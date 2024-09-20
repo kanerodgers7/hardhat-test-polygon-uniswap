@@ -29,7 +29,7 @@ describe("UniswapV3FactoryTest", () => {
         await uniswapFactory.testCreatePool(factory.target, weth.target, usdc.target);
         const failed = await uniswapFactory.getFailedStatus();
         const message = await uniswapFactory.getErrorMessage();
-        if(failed === true) console.log(message);
+        // if(failed === true) console.log(message);
         expect(failed).to.equal(false)
     })
 
@@ -37,7 +37,7 @@ describe("UniswapV3FactoryTest", () => {
         await uniswapFactory.testCreatePoolUnsupportedFee(factory.target, weth.target, usdc.target);
         const failed = await uniswapFactory.getFailedStatus();
         const message = await uniswapFactory.getErrorMessage();
-        if(failed === true) console.log(message);
+        // if(failed === true) console.log(message);
         expect(failed).to.equal(false)
     })
 

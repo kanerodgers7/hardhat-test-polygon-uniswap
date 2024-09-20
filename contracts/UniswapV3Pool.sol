@@ -30,6 +30,14 @@ contract UniswapV3Pool is IUniswapV3Pool {
     error InvalidTickRange();
     error NotEnoughLiquidity();
     error ZeroLiquidity();
+    error InsufficientWithParam(
+        address,
+        address,
+        uint256,
+        uint256,
+        uint256,
+        uint256
+    );
 
     event Burn(
         address indexed owner,
@@ -131,26 +139,35 @@ contract UniswapV3Pool is IUniswapV3Pool {
         ).parameters();
     }
 
-    function initialize(
-        uint160 sqrtPriceX96
-    ) public returns (int24 tickUp, int24 tickLow) {
-        if (slot0.sqrtPriceX96 != 0) revert AlreadyInitialized();
-
-        uint160 standardUpSqrtPriceX96 = (sqrtPriceX96 * 12e17) / 1e18;
-        uint160 standardLowSqrtPriceX96 = (sqrtPriceX96 * 8e17) / 1e18;
-
-        int24 tick = TickMath.getTickAtSqrtRatio(sqrtPriceX96);
-        tickLow = TickMath.getTickAtSqrtRatio(standardLowSqrtPriceX96);
-        tickUp = TickMath.getTickAtSqrtRatio(standardUpSqrtPriceX96);
-
-        slot0 = Slot0({sqrtPriceX96: sqrtPriceX96, tick: tick});
-
+    function updateStandardTick() public returns (int24 tickUp, int24 tickLow) {
+        int24 tick = slot0.tick;
+        uint160 sqrtPriceX96 = slot0.sqrtPriceX96;
+        tickLow = int24((int256(tick) * 8e8) / 1e9);
+        tickUp = int24((int256(tick) * 12e8) / 1e9);
+        if (tickLow > tickUp) (tickLow, tickUp) = (tickUp, tickLow);
+        if (tickLow < -887272) tickLow = -887272;
+        if (tickUp > 887272) tickUp = 887272;
         standardSlot0 = StandardSlot0({
             sqrtPriceX96: sqrtPriceX96,
             standardTick: tick,
             standatdLowTick: tickLow,
             standardUpTick: tickUp
         });
+    }
+
+    function initialize(uint160 sqrtPriceX96) public returns (int24, int24) {
+        if (slot0.sqrtPriceX96 != 0) revert AlreadyInitialized();
+
+        // uint160 standardUpSqrtPriceX96 = (sqrtPriceX96 * 12e17) / 1e18;
+        // uint160 standardLowSqrtPriceX96 = (sqrtPriceX96 * 8e17) / 1e18;
+
+        int24 tick = TickMath.getTickAtSqrtRatio(sqrtPriceX96);
+        // tickLow = (tick * 12e17) / 1e18; //TickMath.getTickAtSqrtRatio(standardLowSqrtPriceX96);
+        // tickUp = (tick * 8e17) / 1e18; //TickMath.getTickAtSqrtRatio(standardUpSqrtPriceX96);
+
+        slot0 = Slot0({sqrtPriceX96: sqrtPriceX96, tick: tick});
+
+        return updateStandardTick();
     }
 
     struct ModifyPositionParams {
@@ -287,6 +304,14 @@ contract UniswapV3Pool is IUniswapV3Pool {
             amount1,
             data
         );
+        // revert InsufficientWithParam(
+        //     token0,
+        //     token1,
+        //     amount0,
+        //     amount1,
+        //     balance0(),
+        //     balance1()
+        // );
 
         if (amount0 > 0 && balance0Before + amount0 > balance0())
             revert InsufficientInputAmount();

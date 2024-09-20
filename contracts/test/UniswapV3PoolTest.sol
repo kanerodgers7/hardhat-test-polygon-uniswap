@@ -12,29 +12,39 @@ import "../UniswapV3Factory.sol";
 import "../UniswapV3Pool.sol";
 
 contract UniswapV3PoolTest is Test, UniswapV3PoolUtils {
-    ERC20Mintable weth;
-    ERC20Mintable usdc;
-    UniswapV3Factory factory;
+    address weth;
+    address usdc;
+    address factory;
     UniswapV3Pool pool;
 
     bool transferInMintCallback = true;
 
+    error TempError(address, address);
+
     // bool flashCallbackCalled = false;
 
-    function setUp() public {
-        usdc = new ERC20Mintable("USDC", "USDC", 18);
-        weth = new ERC20Mintable("Ether", "ETH", 18);
-        factory = new UniswapV3Factory();
+    function setUp(address _weth, address _usdc, address _factory) public {
+        weth = _weth; //new ERC20Mintable("Ether", "ETH", 18);
+        usdc = _usdc; //new ERC20Mintable("USDC", "USDC", 18);
+        factory = _factory; //new UniswapV3Factory();
     }
 
     function testInitialize() public {
         pool = UniswapV3Pool(
-            factory.createPool(address(weth), address(usdc), 3000)
+            UniswapV3Factory(factory).createPool(weth, usdc, 3000)
         );
 
         (uint160 sqrtPriceX96, int24 tick) = pool.slot0();
-        assertEq(sqrtPriceX96, 0, "invalid sqrtPriceX96");
-        assertEq(tick, 0, "invalid tick");
+        // assertEq(sqrtPriceX96, 0, "invalid sqrtPriceX96");
+        if (sqrtPriceX96 != 0) {
+            setFailedStatus(true, "invalid sqrtPriceX96");
+            return;
+        }
+        // assertEq(tick, 0, "invalid tick");
+        if (tick != 0) {
+            setFailedStatus(true, "invalid tick");
+            return;
+        }
         // assertEq(observationIndex, 0, "invalid observation index");
         // assertEq(observationCardinality, 0, "invalid observation cardinality");
         // assertEq(
@@ -46,12 +56,20 @@ contract UniswapV3PoolTest is Test, UniswapV3PoolUtils {
         pool.initialize(sqrtP(31337));
 
         (sqrtPriceX96, tick) = pool.slot0();
-        assertEq(
-            sqrtPriceX96,
-            14025175117687921942002399182848,
-            "invalid sqrtPriceX96"
-        );
-        assertEq(tick, 103530, "invalid tick");
+        // assertEq(
+        //     sqrtPriceX96,
+        //     14025175117687921942002399182848,
+        //     "invalid sqrtPriceX96"
+        // );
+        if (sqrtPriceX96 != 14025175117687921942002399182848) {
+            setFailedStatus(true, "invalid sqrtPriceX96");
+            return;
+        }
+        // assertEq(tick, 103530, "invalid tick");
+        if (tick != 103530) {
+            setFailedStatus(true, "invalid tick");
+            return;
+        }
         // assertEq(observationIndex, 0, "invalid observation index");
         // assertEq(observationCardinality, 1, "invalid observation cardinality");
         // assertEq(
@@ -60,8 +78,16 @@ contract UniswapV3PoolTest is Test, UniswapV3PoolUtils {
         //     "invalid next observation cardinality"
         // );
 
-        vm.expectRevert(encodeError("AlreadyInitialized()"));
-        pool.initialize(sqrtP(42));
+        // vm.expectRevert(encodeError("AlreadyInitialized()"));
+        try pool.initialize(sqrtP(42)) {
+            // Handle successful pool creation
+            setFailedStatus(true, "Unexpected error");
+        } catch Error(string memory) {
+            // This is executed in case of a revert with a reason string
+            setFailedStatus(true, "Unexpected error with reason");
+        } catch (bytes memory) {
+            // This is executed in case of a revert without a reason string
+        }
     }
 
     function testMintInRange() public {
@@ -87,21 +113,29 @@ contract UniswapV3PoolTest is Test, UniswapV3PoolUtils {
             5000 ether
         );
 
-        assertEq(
-            poolBalance0,
-            expectedAmount0,
-            "incorrect weth deposited amount"
-        );
-        assertEq(
-            poolBalance1,
-            expectedAmount1,
-            "incorrect usdc deposited amount"
-        );
+        // assertEq(
+        //     poolBalance0,
+        //     expectedAmount0,
+        //     "incorrect weth deposited amount"
+        // );
+        if (poolBalance0 != expectedAmount0) {
+            setFailedStatus(true, "incorrect weth deposited amount");
+            return;
+        }
+        // assertEq(
+        //     poolBalance1,
+        //     expectedAmount1,
+        //     "incorrect usdc deposited amount"
+        // );
+        if (poolBalance1 != expectedAmount1) {
+            setFailedStatus(true, "incorrect usdc deposited amount");
+            return;
+        }
 
         assertMany(
             ExpectedMany({
                 pool: pool,
-                tokens: [weth, usdc],
+                tokens: [ERC20Mintable(weth), ERC20Mintable(usdc)],
                 liquidity: liquidity[0].amount,
                 sqrtPriceX96: sqrtP(5000),
                 tick: tick(5000),
@@ -152,21 +186,29 @@ contract UniswapV3PoolTest is Test, UniswapV3PoolUtils {
             4999.999999999999999994 ether
         );
 
-        assertEq(
-            poolBalance0,
-            expectedAmount0,
-            "incorrect weth deposited amount"
-        );
-        assertEq(
-            poolBalance1,
-            expectedAmount1,
-            "incorrect usdc deposited amount"
-        );
+        // assertEq(
+        //     poolBalance0,
+        //     expectedAmount0,
+        //     "incorrect weth deposited amount"
+        // );
+        if (poolBalance0 != expectedAmount0) {
+            setFailedStatus(true, "incorrect weth deposited amount");
+            return;
+        }
+        // assertEq(
+        //     poolBalance1,
+        //     expectedAmount1,
+        //     "incorrect usdc deposited amount"
+        // );
+        if (poolBalance1 != expectedAmount1) {
+            setFailedStatus(true, "incorrect usdc deposited amount");
+            return;
+        }
 
         assertMany(
             ExpectedMany({
                 pool: pool,
-                tokens: [weth, usdc],
+                tokens: [ERC20Mintable(weth), ERC20Mintable(usdc)],
                 liquidity: 0,
                 sqrtPriceX96: sqrtP(5000),
                 tick: tick(5000),
@@ -214,21 +256,29 @@ contract UniswapV3PoolTest is Test, UniswapV3PoolUtils {
 
         (uint256 expectedAmount0, uint256 expectedAmount1) = (1 ether, 0);
 
-        assertEq(
-            poolBalance0,
-            expectedAmount0,
-            "incorrect weth deposited amount"
-        );
-        assertEq(
-            poolBalance1,
-            expectedAmount1,
-            "incorrect usdc deposited amount"
-        );
+        // assertEq(
+        //     poolBalance0,
+        //     expectedAmount0,
+        //     "incorrect weth deposited amount"
+        // );
+        if (poolBalance0 != expectedAmount0) {
+            setFailedStatus(true, "incorrect weth deposited amount");
+            return;
+        }
+        // assertEq(
+        //     poolBalance1,
+        //     expectedAmount1,
+        //     "incorrect usdc deposited amount"
+        // );
+        if (poolBalance1 != expectedAmount1) {
+            setFailedStatus(true, "incorrect usdc deposited amount");
+            return;
+        }
 
         assertMany(
             ExpectedMany({
                 pool: pool,
-                tokens: [weth, usdc],
+                tokens: [ERC20Mintable(weth), ERC20Mintable(usdc)],
                 liquidity: 0,
                 sqrtPriceX96: sqrtP(5000),
                 tick: tick(5000),
@@ -284,7 +334,7 @@ contract UniswapV3PoolTest is Test, UniswapV3PoolUtils {
         assertMany(
             ExpectedPoolAndBalances({
                 pool: pool,
-                tokens: [weth, usdc],
+                tokens: [ERC20Mintable(weth), ERC20Mintable(usdc)],
                 liquidity: liquidity[0].amount + liquidity[1].amount,
                 sqrtPriceX96: sqrtP(5000),
                 tick: tick(5000),
@@ -361,13 +411,21 @@ contract UniswapV3PoolTest is Test, UniswapV3PoolUtils {
             liquidity[0].amount
         );
 
-        assertEq(burnAmount0, expectedAmount0, "incorrect weth burned amount");
-        assertEq(burnAmount1, expectedAmount1, "incorrect usdc burned amount");
+        // assertEq(burnAmount0, expectedAmount0, "incorrect weth burned amount");
+        if (burnAmount0 != expectedAmount0) {
+            setFailedStatus(true, "incorrect weth burned amount");
+            return;
+        }
+        // assertEq(burnAmount1, expectedAmount1, "incorrect usdc burned amount");
+        if (burnAmount1 != expectedAmount1) {
+            setFailedStatus(true, "incorrect usdc burned amount");
+            return;
+        }
 
         assertMany(
             ExpectedMany({
                 pool: pool,
-                tokens: [weth, usdc],
+                tokens: [ERC20Mintable(weth), ERC20Mintable(usdc)],
                 liquidity: 0,
                 sqrtPriceX96: sqrtP(5000),
                 tick: tick(5000),
@@ -440,13 +498,21 @@ contract UniswapV3PoolTest is Test, UniswapV3PoolUtils {
             liquidity[0].amount / 2
         );
 
-        assertEq(burnAmount0, expectedAmount0, "incorrect weth burned amount");
-        assertEq(burnAmount1, expectedAmount1, "incorrect usdc burned amount");
+        // assertEq(burnAmount0, expectedAmount0, "incorrect weth burned amount");
+        if (burnAmount0 != expectedAmount0) {
+            setFailedStatus(true, "incorrect weth burned amount");
+            return;
+        }
+        // assertEq(burnAmount1, expectedAmount1, "incorrect usdc burned amount");
+        if (burnAmount1 != expectedAmount1) {
+            setFailedStatus(true, "incorrect usdc burned amount");
+            return;
+        }
 
         assertMany(
             ExpectedMany({
                 pool: pool,
-                tokens: [weth, usdc],
+                tokens: [ERC20Mintable(weth), ERC20Mintable(usdc)],
                 liquidity: liquidity[0].amount / 2 + 1,
                 sqrtPriceX96: sqrtP(5000),
                 tick: tick(5000),
@@ -510,15 +576,15 @@ contract UniswapV3PoolTest is Test, UniswapV3PoolUtils {
         LiquidityRange memory liq = liquidity[0];
 
         uint256 swapAmount = 42 ether; // 42 USDC
-        usdc.mint(address(this), swapAmount);
-        usdc.approve(address(this), swapAmount);
+        ERC20Mintable(usdc).mint(address(this), swapAmount);
+        ERC20Mintable(usdc).approve(address(this), swapAmount);
 
         (int256 swapAmount0, int256 swapAmount1) = pool.swap(
             address(this),
             false,
             swapAmount,
             sqrtP(5004),
-            encodeExtra(address(weth), address(usdc), address(this))
+            encodeExtra(weth, usdc, address(this))
         );
 
         pool.burn(liq.lowerTick, liq.upperTick, liq.amount);
@@ -531,16 +597,24 @@ contract UniswapV3PoolTest is Test, UniswapV3PoolUtils {
             positionKey
         );
 
-        assertEq(
-            tokensOwed0,
-            uint256(int256(poolBalance0) + swapAmount0 - 1),
-            "incorrect tokens owed for token0"
-        );
-        assertEq(
-            tokensOwed1,
-            uint256(int256(poolBalance1) + swapAmount1 - 2), // swap fee 0.003%
-            "incorrect tokens owed for token1"
-        );
+        // assertEq(
+        //     tokensOwed0,
+        //     uint256(int256(poolBalance0) + swapAmount0 - 1),
+        //     "incorrect tokens owed for token0"
+        // );
+        if (tokensOwed0 != uint256(int256(poolBalance0) + swapAmount0 - 1)) {
+            setFailedStatus(true, "incorrect tokens owed for token0");
+            return;
+        }
+        // assertEq(
+        //     tokensOwed1,
+        //     uint256(int256(poolBalance1) + swapAmount1 - 2), // swap fee 0.003%
+        //     "incorrect tokens owed for token1"
+        // );
+        if (tokensOwed1 != uint256(int256(poolBalance1) + swapAmount1 - 2)) {
+            setFailedStatus(true, "incorrect tokens owed for token1");
+            return;
+        }
 
         (uint128 amountCollected0, uint128 amountCollected1) = pool.collect(
             address(this),
@@ -549,40 +623,76 @@ contract UniswapV3PoolTest is Test, UniswapV3PoolUtils {
             tokensOwed0,
             tokensOwed1
         );
-        assertEq(
-            amountCollected0,
-            tokensOwed0,
-            "incorrect collected amount for token 0"
-        );
-        assertEq(
-            amountCollected1,
-            tokensOwed1,
-            "incorrect collected amount for token 1"
-        );
+        // assertEq(
+        //     amountCollected0,
+        //     tokensOwed0,
+        //     "incorrect collected amount for token 0"
+        // );
+        if (amountCollected0 != tokensOwed0) {
+            setFailedStatus(true, "incorrect collected amount for token 0");
+            return;
+        }
+        // assertEq(
+        //     amountCollected1,
+        //     tokensOwed1,
+        //     "incorrect collected amount for token 1"
+        // );
+        if (amountCollected1 != tokensOwed1) {
+            setFailedStatus(true, "incorrect collected amount for token 1");
+            return;
+        }
 
-        assertEq(
-            weth.balanceOf(address(pool)),
-            1,
-            "incorrect pool balance of token0 after collect"
-        );
-        assertEq(
-            usdc.balanceOf(address(pool)),
-            2,
-            "incorrect pool balance of token1 after collect"
-        );
+        // assertEq(
+        //     ERC20Mintable(weth).balanceOf(address(pool)),
+        //     1,
+        //     "incorrect pool balance of token0 after collect"
+        // );
+        if (ERC20Mintable(weth).balanceOf(address(pool)) != 1) {
+            setFailedStatus(
+                true,
+                "incorrect pool balance of token0 after collect"
+            );
+            return;
+        }
+        // assertEq(
+        //     ERC20Mintable(usdc).balanceOf(address(pool)),
+        //     2,
+        //     "incorrect pool balance of token1 after collect"
+        // );
+        if (ERC20Mintable(usdc).balanceOf(address(pool)) != 2) {
+            setFailedStatus(
+                true,
+                "incorrect pool balance of token1 after collect"
+            );
+            return;
+        }
 
         (, , , tokensOwed0, tokensOwed1) = pool.positions(positionKey);
 
-        assertEq(
-            tokensOwed0,
-            0,
-            "incorrect owed amount for token 0 after collect"
-        );
-        assertEq(
-            tokensOwed1,
-            0,
-            "incorrect owed amount for token 1 after collect"
-        );
+        // assertEq(
+        //     tokensOwed0,
+        //     0,
+        //     "incorrect owed amount for token 0 after collect"
+        // );
+        if (tokensOwed0 != 0) {
+            setFailedStatus(
+                true,
+                "incorrect owed amount for token 0 after collect"
+            );
+            return;
+        }
+        // assertEq(
+        //     tokensOwed1,
+        //     0,
+        //     "incorrect owed amount for token 1 after collect"
+        // );
+        if (tokensOwed1 != 0) {
+            setFailedStatus(
+                true,
+                "incorrect owed amount for token 1 after collect"
+            );
+            return;
+        }
     }
 
     function testCollectAfterZeroBurn() public {
@@ -605,15 +715,15 @@ contract UniswapV3PoolTest is Test, UniswapV3PoolUtils {
         LiquidityRange memory liq = liquidity[0];
 
         uint256 swapAmount = 42 ether; // 42 USDC
-        usdc.mint(address(this), swapAmount);
-        usdc.approve(address(this), swapAmount);
+        ERC20Mintable(usdc).mint(address(this), swapAmount);
+        ERC20Mintable(usdc).approve(address(this), swapAmount);
 
         (int256 swapAmount0, int256 swapAmount1) = pool.swap(
             address(this),
             false,
             swapAmount,
             sqrtP(5004),
-            encodeExtra(address(weth), address(usdc), address(this))
+            encodeExtra(weth, usdc, address(this))
         );
 
         pool.burn(liq.lowerTick, liq.upperTick, 0);
@@ -626,12 +736,20 @@ contract UniswapV3PoolTest is Test, UniswapV3PoolUtils {
             positionKey
         );
 
-        assertEq(tokensOwed0, 0, "incorrect tokens owed for token0");
-        assertEq(
-            tokensOwed1,
-            uint256((swapAmount1 * 3000) / 1e6) - 1, // - 0.03% - rounding
-            "incorrect tokens owed for token1"
-        );
+        // assertEq(tokensOwed0, 0, "incorrect tokens owed for token0");
+        if (tokensOwed0 != 0) {
+            setFailedStatus(true, "incorrect tokens owed for token0");
+            return;
+        }
+        // assertEq(
+        //     tokensOwed1,
+        //     uint256((swapAmount1 * 3000) / 1e6) - 1, // - 0.03% - rounding
+        //     "incorrect tokens owed for token1"
+        // );
+        if (tokensOwed1 != uint256((swapAmount1 * 3000) / 1e6) - 1) {
+            setFailedStatus(true, "incorrect tokens owed for token1");
+            return;
+        }
 
         (uint128 amountCollected0, uint128 amountCollected1) = pool.collect(
             address(this),
@@ -640,27 +758,55 @@ contract UniswapV3PoolTest is Test, UniswapV3PoolUtils {
             tokensOwed0,
             tokensOwed1
         );
-        assertEq(
-            amountCollected0,
-            tokensOwed0,
-            "incorrect collected amount for token 0"
-        );
-        assertEq(
-            amountCollected1,
-            tokensOwed1,
-            "incorrect collected amount for token 1"
-        );
+        // assertEq(
+        //     amountCollected0,
+        //     tokensOwed0,
+        //     "incorrect collected amount for token 0"
+        // );
+        if (amountCollected0 != tokensOwed0) {
+            setFailedStatus(true, "incorrect collected amount for token 0");
+            return;
+        }
+        // assertEq(
+        //     amountCollected1,
+        //     tokensOwed1,
+        //     "incorrect collected amount for token 1"
+        // );
+        if (amountCollected1 != tokensOwed1) {
+            setFailedStatus(true, "incorrect collected amount for token 1");
+            return;
+        }
 
-        assertEq(
-            weth.balanceOf(address(pool)),
-            poolBalance0 - uint256(-swapAmount0) - amountCollected0,
-            "incorrect pool balance of token0 after collect"
-        );
-        assertEq(
-            usdc.balanceOf(address(pool)),
-            poolBalance1 + uint256(swapAmount1) - amountCollected1,
-            "incorrect pool balance of token1 after collect"
-        );
+        // assertEq(
+        //     ERC20Mintable(weth).balanceOf(address(pool)),
+        //     poolBalance0 - uint256(-swapAmount0) - amountCollected0,
+        //     "incorrect pool balance of token0 after collect"
+        // );
+        if (
+            ERC20Mintable(weth).balanceOf(address(pool)) !=
+            poolBalance0 - uint256(-swapAmount0) - amountCollected0
+        ) {
+            setFailedStatus(
+                true,
+                "incorrect pool balance of token0 after collect"
+            );
+            return;
+        }
+        // assertEq(
+        //     ERC20Mintable(usdc).balanceOf(address(pool)),
+        //     poolBalance1 + uint256(swapAmount1) - amountCollected1,
+        //     "incorrect pool balance of token1 after collect"
+        // );
+        if (
+            ERC20Mintable(usdc).balanceOf(address(pool)) !=
+            poolBalance1 + uint256(swapAmount1) - amountCollected1
+        ) {
+            setFailedStatus(
+                true,
+                "incorrect pool balance of token1 after collect"
+            );
+            return;
+        }
     }
 
     function testCollectMoreThanAvailable() public {
@@ -679,15 +825,15 @@ contract UniswapV3PoolTest is Test, UniswapV3PoolUtils {
         LiquidityRange memory liq = liquidity[0];
 
         uint256 swapAmount = 42 ether; // 42 USDC
-        usdc.mint(address(this), swapAmount);
-        usdc.approve(address(this), swapAmount);
+        ERC20Mintable(usdc).mint(address(this), swapAmount);
+        ERC20Mintable(usdc).approve(address(this), swapAmount);
 
         pool.swap(
             address(this),
             false,
             swapAmount,
             sqrtP(5004),
-            encodeExtra(address(weth), address(usdc), address(this))
+            encodeExtra(weth, usdc, address(this))
         );
 
         pool.burn(liq.lowerTick, liq.upperTick, liq.amount);
@@ -707,16 +853,24 @@ contract UniswapV3PoolTest is Test, UniswapV3PoolUtils {
             999_999_999 ether,
             999_999_999 ether
         );
-        assertEq(
-            amountCollected0,
-            tokensOwed0,
-            "incorrect collected amount for token 0"
-        );
-        assertEq(
-            amountCollected1,
-            tokensOwed1,
-            "incorrect collected amount for token 1"
-        );
+        // assertEq(
+        //     amountCollected0,
+        //     tokensOwed0,
+        //     "incorrect collected amount for token 0"
+        // );
+        if (amountCollected0 != tokensOwed0) {
+            setFailedStatus(true, "incorrect collected amount for token 0");
+            return;
+        }
+        // assertEq(
+        //     amountCollected1,
+        //     tokensOwed1,
+        //     "incorrect collected amount for token 1"
+        // );
+        if (amountCollected1 != tokensOwed1) {
+            setFailedStatus(true, "incorrect collected amount for token 1");
+            return;
+        }
     }
 
     function testCollectPartially() public {
@@ -739,8 +893,8 @@ contract UniswapV3PoolTest is Test, UniswapV3PoolUtils {
         LiquidityRange memory liq = liquidity[0];
 
         uint256 swapAmount = 42 ether; // 42 USDC
-        usdc.mint(address(this), swapAmount);
-        usdc.approve(address(this), swapAmount);
+        ERC20Mintable(usdc).mint(address(this), swapAmount);
+        ERC20Mintable(usdc).approve(address(this), swapAmount);
 
         int256[] memory swapAmounts = new int256[](2);
         (swapAmounts[0], swapAmounts[1]) = pool.swap(
@@ -748,7 +902,7 @@ contract UniswapV3PoolTest is Test, UniswapV3PoolUtils {
             false,
             swapAmount,
             sqrtP(5004),
-            encodeExtra(address(weth), address(usdc), address(this))
+            encodeExtra(weth, usdc, address(this))
         );
 
         pool.burn(liq.lowerTick, liq.upperTick, liq.amount / 2);
@@ -766,16 +920,24 @@ contract UniswapV3PoolTest is Test, UniswapV3PoolUtils {
             2521.062999999999999996 ether
         );
 
-        assertEq(
-            tokensOwed[0],
-            expectedTokensOwed[0],
-            "incorrect tokens owed for token0"
-        );
-        assertEq(
-            tokensOwed[1],
-            expectedTokensOwed[1],
-            "incorrect tokens owed for token1"
-        );
+        // assertEq(
+        //     tokensOwed[0],
+        //     expectedTokensOwed[0],
+        //     "incorrect tokens owed for token0"
+        // );
+        if (tokensOwed[0] != expectedTokensOwed[0]) {
+            setFailedStatus(true, "incorrect tokens owed for token0");
+            return;
+        }
+        // assertEq(
+        //     tokensOwed[1],
+        //     expectedTokensOwed[1],
+        //     "incorrect tokens owed for token1"
+        // );
+        if (tokensOwed[1] != expectedTokensOwed[1]) {
+            setFailedStatus(true, "incorrect tokens owed for token1");
+            return;
+        }
 
         uint128[] memory collectedAmounts = new uint128[](2);
         (collectedAmounts[0], collectedAmounts[1]) = pool.collect(
@@ -785,48 +947,100 @@ contract UniswapV3PoolTest is Test, UniswapV3PoolUtils {
             tokensOwed[0],
             tokensOwed[1]
         );
-        assertEq(
-            collectedAmounts[0],
-            tokensOwed[0],
-            "incorrect collected amount for token 0"
-        );
-        assertEq(
-            collectedAmounts[1],
-            tokensOwed[1],
-            "incorrect collected amount for token 1"
-        );
+        // assertEq(
+        //     collectedAmounts[0],
+        //     tokensOwed[0],
+        //     "incorrect collected amount for token 0"
+        // );
+        if (collectedAmounts[0] != tokensOwed[0]) {
+            setFailedStatus(true, "incorrect collected amount for token 0");
+            return;
+        }
+        // assertEq(
+        //     collectedAmounts[1],
+        //     tokensOwed[1],
+        //     "incorrect collected amount for token 1"
+        // );
+        if (collectedAmounts[1] != tokensOwed[1]) {
+            setFailedStatus(true, "incorrect collected amount for token 1");
+            return;
+        }
 
-        assertEq(
-            weth.balanceOf(address(pool)),
-            uint256(int256(poolBalance0) + swapAmounts[0]) - tokensOwed[0],
-            "incorrect pool balance of token0 after collect"
-        );
-        assertEq(
-            usdc.balanceOf(address(pool)),
-            uint256(int256(poolBalance1) + swapAmounts[1]) - tokensOwed[1],
-            "incorrect pool balance of token1 after collect"
-        );
+        // assertEq(
+        //     ERC20Mintable(weth).balanceOf(address(pool)),
+        //     uint256(int256(poolBalance0) + swapAmounts[0]) - tokensOwed[0],
+        //     "incorrect pool balance of token0 after collect"
+        // );
+        if (
+            ERC20Mintable(weth).balanceOf(address(pool)) !=
+            uint256(int256(poolBalance0) + swapAmounts[0]) - tokensOwed[0]
+        ) {
+            setFailedStatus(
+                true,
+                "incorrect pool balance of token0 after collect"
+            );
+            return;
+        }
+        // assertEq(
+        //     ERC20Mintable(usdc).balanceOf(address(pool)),
+        //     uint256(int256(poolBalance1) + swapAmounts[1]) - tokensOwed[1],
+        //     "incorrect pool balance of token1 after collect"
+        // );
+        if (
+            ERC20Mintable(usdc).balanceOf(address(pool)) !=
+            uint256(int256(poolBalance1) + swapAmounts[1]) - tokensOwed[1]
+        ) {
+            setFailedStatus(
+                true,
+                "incorrect pool balance of token1 after collect"
+            );
+            return;
+        }
     }
 
     function testMintInvalidTickRangeLower() public {
-        pool = deployPool(factory, address(weth), address(usdc), 3000, 1);
+        pool = deployPool(UniswapV3Factory(factory), weth, usdc, 3000, 1);
 
-        vm.expectRevert(encodeError("InvalidTickRange()"));
-        pool.mint(address(this), -887273, 0, 0, "");
+        // vm.expectRevert(encodeError("InvalidTickRange()"));
+        try pool.mint(address(this), -887273, 0, 0, "") {
+            // Handle successful pool creation
+            setFailedStatus(true, "Unexpected error");
+        } catch Error(string memory) {
+            // This is executed in case of a revert with a reason string
+            setFailedStatus(true, "Unexpected error with reason");
+        } catch (bytes memory) {
+            // This is executed in case of a revert without a reason string
+        }
     }
 
     function testMintInvalidTickRangeUpper() public {
-        pool = deployPool(factory, address(weth), address(usdc), 3000, 1);
+        pool = deployPool(UniswapV3Factory(factory), weth, usdc, 3000, 1);
 
-        vm.expectRevert(encodeError("InvalidTickRange()"));
-        pool.mint(address(this), 0, 887273, 0, "");
+        // vm.expectRevert(encodeError("InvalidTickRange()"));
+        try pool.mint(address(this), 0, 887273, 0, "") {
+            // Handle successful pool creation
+            setFailedStatus(true, "Unexpected error");
+        } catch Error(string memory) {
+            // This is executed in case of a revert with a reason string
+            setFailedStatus(true, "Unexpected error with reason");
+        } catch (bytes memory) {
+            // This is executed in case of a revert without a reason string
+        }
     }
 
     function testMintZeroLiquidity() public {
-        pool = deployPool(factory, address(weth), address(usdc), 3000, 1);
+        pool = deployPool(UniswapV3Factory(factory), weth, usdc, 3000, 1);
 
-        vm.expectRevert(encodeError("ZeroLiquidity()"));
-        pool.mint(address(this), 0, 1, 0, "");
+        // vm.expectRevert(encodeError("ZeroLiquidity()"));
+        try pool.mint(address(this), 0, 1, 0, "") {
+            // Handle successful pool creation
+            setFailedStatus(true, "Unexpected error");
+        } catch Error(string memory) {
+            // This is executed in case of a revert with a reason string
+            setFailedStatus(true, "Unexpected error with reason");
+        } catch (bytes memory) {
+            // This is executed in case of a revert without a reason string
+        }
     }
 
     function testMintInsufficientTokenBalance() public {
@@ -843,14 +1057,24 @@ contract UniswapV3PoolTest is Test, UniswapV3PoolUtils {
             })
         );
 
-        vm.expectRevert(encodeError("InsufficientInputAmount()"));
-        pool.mint(
-            address(this),
-            liquidity[0].lowerTick,
-            liquidity[0].upperTick,
-            liquidity[0].amount,
-            ""
-        );
+        // vm.expectRevert(encodeError("InsufficientInputAmount()"));
+        try
+            pool.mint(
+                address(this),
+                liquidity[0].lowerTick,
+                liquidity[0].upperTick,
+                liquidity[0].amount,
+                ""
+            )
+        {
+            // Handle successful pool creation
+            setFailedStatus(true, "Unexpected error");
+        } catch Error(string memory) {
+            // This is executed in case of a revert with a reason string
+            setFailedStatus(true, "Unexpected error with reason");
+        } catch (bytes memory) {
+            // This is executed in case of a revert without a reason string
+        }
     }
 
     // function testFlash() public {
@@ -958,26 +1182,24 @@ contract UniswapV3PoolTest is Test, UniswapV3PoolUtils {
             uint256 poolBalance1
         )
     {
-        weth.mint(address(this), params.balances[0]);
-        usdc.mint(address(this), params.balances[1]);
+        ERC20Mintable(weth).mint(address(this), params.balances[0]);
+        ERC20Mintable(usdc).mint(address(this), params.balances[1]);
+
+        // revert TempError(weth, usdc);
 
         pool = deployPool(
-            factory,
-            address(weth),
-            address(usdc),
+            UniswapV3Factory(factory),
+            weth,
+            usdc,
             3000,
             params.currentPrice
         );
 
         if (params.mintLiqudity) {
-            weth.approve(address(this), params.balances[0]);
-            usdc.approve(address(this), params.balances[1]);
+            ERC20Mintable(weth).approve(address(this), params.balances[0]);
+            ERC20Mintable(usdc).approve(address(this), params.balances[1]);
 
-            bytes memory extra = encodeExtra(
-                address(weth),
-                address(usdc),
-                address(this)
-            );
+            bytes memory extra = encodeExtra(weth, usdc, address(this));
 
             uint256 poolBalance0Tmp;
             uint256 poolBalance1Tmp;

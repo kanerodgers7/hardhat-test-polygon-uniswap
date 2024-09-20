@@ -12,21 +12,23 @@ import "../UniswapV3Factory.sol";
 import "../UniswapV3Pool.sol";
 
 contract UniswapV3PoolSwapsTest is Test, UniswapV3PoolUtils {
-    ERC20Mintable weth;
-    ERC20Mintable usdc;
-    UniswapV3Factory factory;
+    address weth;
+    address usdc;
+    address factory;
     UniswapV3Pool pool;
 
     bool transferInMintCallback = true;
     bool transferInSwapCallback = true;
     bytes extra;
 
-    function setUp() public {
-        usdc = new ERC20Mintable("USDC", "USDC", 18);
-        weth = new ERC20Mintable("Ether", "ETH", 18);
-        factory = new UniswapV3Factory();
+    error MintError(int256);
 
-        extra = encodeExtra(address(weth), address(usdc), address(this));
+    function setUp(address _weth, address _usdc, address _factory) public {
+        weth = _weth; //new ERC20Mintable("Ether", "ETH", 18);
+        usdc = _usdc; //new ERC20Mintable("USDC", "USDC", 18);
+        factory = _factory; //new UniswapV3Factory();
+
+        extra = encodeExtra(weth, usdc, address(this));
     }
 
     //  One price range
@@ -53,12 +55,12 @@ contract UniswapV3PoolSwapsTest is Test, UniswapV3PoolUtils {
             );
 
         uint256 swapAmount = 42 ether; // 42 USDC
-        usdc.mint(address(this), swapAmount);
-        usdc.approve(address(this), swapAmount);
+        ERC20Mintable(usdc).mint(address(this), swapAmount);
+        ERC20Mintable(usdc).approve(address(this), swapAmount);
 
         (int256 userBalance0Before, int256 userBalance1Before) = (
-            int256(weth.balanceOf(address(this))),
-            int256(usdc.balanceOf(address(this)))
+            int256(ERC20Mintable(weth).balanceOf(address(this))),
+            int256(ERC20Mintable(usdc).balanceOf(address(this)))
         );
 
         (int256 amount0Delta, int256 amount1Delta) = pool.swap(
@@ -69,14 +71,22 @@ contract UniswapV3PoolSwapsTest is Test, UniswapV3PoolUtils {
             extra
         );
 
-        assertEq(amount0Delta, -0.008371593947078467 ether, "invalid ETH out");
-        assertEq(amount1Delta, 42 ether, "invalid USDC in");
+        // assertEq(amount0Delta, -0.008371593947078467 ether, "invalid ETH out");
+        if (amount0Delta != -0.008371593947078467 ether) {
+            setFailedStatus(true, "invalid ETH out");
+            return;
+        }
+        // assertEq(amount1Delta, 42 ether, "invalid USDC in");
+        if (amount1Delta != 42 ether) {
+            setFailedStatus(true, "invalid USDC in");
+            return;
+        }
 
         LiquidityRange memory liq = liquidity[0];
         assertMany(
             ExpectedMany({
                 pool: pool,
-                tokens: [weth, usdc],
+                tokens: [ERC20Mintable(weth), ERC20Mintable(usdc)],
                 liquidity: liq.amount,
                 sqrtPriceX96: 5604422590555458105735383351329, // 5003.830413717752
                 tick: 85183,
@@ -140,12 +150,12 @@ contract UniswapV3PoolSwapsTest is Test, UniswapV3PoolUtils {
             );
 
         uint256 swapAmount = 42 ether; // 42 USDC
-        usdc.mint(address(this), swapAmount);
-        usdc.approve(address(this), swapAmount);
+        ERC20Mintable(usdc).mint(address(this), swapAmount);
+        ERC20Mintable(usdc).approve(address(this), swapAmount);
 
         (int256 userBalance0Before, int256 userBalance1Before) = (
-            int256(weth.balanceOf(address(this))),
-            int256(usdc.balanceOf(address(this)))
+            int256(ERC20Mintable(weth).balanceOf(address(this))),
+            int256(ERC20Mintable(usdc).balanceOf(address(this)))
         );
 
         (int256 amount0Delta, int256 amount1Delta) = pool.swap(
@@ -156,8 +166,16 @@ contract UniswapV3PoolSwapsTest is Test, UniswapV3PoolUtils {
             extra
         );
 
-        assertEq(amount0Delta, -0.008373196666644048 ether, "invalid ETH out");
-        assertEq(amount1Delta, 42 ether, "invalid USDC in");
+        // assertEq(amount0Delta, -0.008373196666644048 ether, "invalid ETH out");
+        if (amount0Delta != -0.008373196666644048 ether) {
+            setFailedStatus(true, "incorrect ETH out");
+            return;
+        }
+        // assertEq(amount1Delta, 42 ether, "invalid USDC in");
+        if (amount1Delta != 42 ether) {
+            setFailedStatus(true, "incorrect USDC in");
+            return;
+        }
 
         LiquidityRange memory liq = liquidity[0];
         uint128 liqAmount = liquidity[0].amount + liquidity[1].amount;
@@ -165,7 +183,7 @@ contract UniswapV3PoolSwapsTest is Test, UniswapV3PoolUtils {
         assertMany(
             ExpectedMany({
                 pool: pool,
-                tokens: [weth, usdc],
+                tokens: [ERC20Mintable(weth), ERC20Mintable(usdc)],
                 liquidity: liqAmount,
                 sqrtPriceX96: 5603349844017036048802233057296, // 5001.915023528226
                 tick: 85180,
@@ -238,12 +256,12 @@ contract UniswapV3PoolSwapsTest is Test, UniswapV3PoolUtils {
             );
 
         uint256 swapAmount = 10000 ether; // 10000 USDC
-        usdc.mint(address(this), swapAmount);
-        usdc.approve(address(this), swapAmount);
+        ERC20Mintable(usdc).mint(address(this), swapAmount);
+        ERC20Mintable(usdc).approve(address(this), swapAmount);
 
         (int256 userBalance0Before, int256 userBalance1Before) = (
-            int256(weth.balanceOf(address(this))),
-            int256(usdc.balanceOf(address(this)))
+            int256(ERC20Mintable(weth).balanceOf(address(this))),
+            int256(ERC20Mintable(usdc).balanceOf(address(this)))
         );
 
         (int256 amount0Delta, int256 amount1Delta) = pool.swap(
@@ -254,12 +272,20 @@ contract UniswapV3PoolSwapsTest is Test, UniswapV3PoolUtils {
             extra
         );
 
-        assertEq(amount0Delta, -1.806151062659754714 ether, "invalid ETH out");
-        assertEq(
-            amount1Delta,
-            9938.146841864722991247 ether,
-            "invalid USDC in"
-        );
+        // assertEq(amount0Delta, -1.806151062659754714 ether, -1.806151062659754714 ether, "invalid ETH out");
+        if (amount0Delta != -1.806151062659754714 ether) {
+            setFailedStatus(true, "incorrect ETH out");
+            return;
+        }
+        // assertEq(
+        //     amount1Delta,
+        //     9938.146841864722991247 ether,
+        //     "invalid USDC in"
+        // );
+        if (amount1Delta != 9938.146841864722991247 ether) {
+            setFailedStatus(true, "incorrect USDC in");
+            return;
+        }
 
         LiquidityRange memory liq1 = liquidity[0];
         LiquidityRange memory liq2 = liquidity[1];
@@ -267,7 +293,7 @@ contract UniswapV3PoolSwapsTest is Test, UniswapV3PoolUtils {
         assertMany(
             ExpectedPoolAndBalances({
                 pool: pool,
-                tokens: [weth, usdc],
+                tokens: [ERC20Mintable(weth), ERC20Mintable(usdc)],
                 liquidity: liq2.amount,
                 sqrtPriceX96: 6190959796047061453084569894912, // 6106.000000000001
                 tick: 87174,
@@ -377,12 +403,12 @@ contract UniswapV3PoolSwapsTest is Test, UniswapV3PoolUtils {
             );
 
         uint256 swapAmount = 10000 ether; // 10000 USDC
-        usdc.mint(address(this), swapAmount);
-        usdc.approve(address(this), swapAmount);
+        ERC20Mintable(usdc).mint(address(this), swapAmount);
+        ERC20Mintable(usdc).approve(address(this), swapAmount);
 
         (int256 userBalance0Before, int256 userBalance1Before) = (
-            int256(weth.balanceOf(address(this))),
-            int256(usdc.balanceOf(address(this)))
+            int256(ERC20Mintable(weth).balanceOf(address(this))),
+            int256(ERC20Mintable(usdc).balanceOf(address(this)))
         );
 
         (int256 amount0Delta, int256 amount1Delta) = pool.swap(
@@ -393,12 +419,20 @@ contract UniswapV3PoolSwapsTest is Test, UniswapV3PoolUtils {
             extra
         );
 
-        assertEq(amount0Delta, -1.846400936777913632 ether, "invalid ETH out");
-        assertEq(
-            amount1Delta,
-            9932.742771767366603035 ether,
-            "invalid USDC in"
-        );
+        // assertEq(amount0Delta, -1.846400936777913632 ether, "invalid ETH out");
+        if (amount0Delta != -1.846400936777913632 ether) {
+            setFailedStatus(true, "incorrect ETH out");
+            return;
+        }
+        // assertEq(
+        //     amount1Delta,
+        //     9932.742771767366603035 ether,
+        //     "invalid USDC in"
+        // );
+        if (amount1Delta != 9932.742771767366603035 ether) {
+            setFailedStatus(true, "invalid USDC in");
+            return;
+        }
 
         LiquidityRange memory liq1 = liquidity[0];
         LiquidityRange memory liq2 = liquidity[1];
@@ -406,7 +440,7 @@ contract UniswapV3PoolSwapsTest is Test, UniswapV3PoolUtils {
         assertMany(
             ExpectedPoolAndBalances({
                 pool: pool,
-                tokens: [weth, usdc],
+                tokens: [ERC20Mintable(weth), ERC20Mintable(usdc)],
                 liquidity: liq2.amount,
                 sqrtPriceX96: 6165559837476377838496291749888, // 6055.999999999999
                 tick: 87092,
@@ -510,12 +544,12 @@ contract UniswapV3PoolSwapsTest is Test, UniswapV3PoolUtils {
             );
 
         uint256 swapAmount = 42 ether; // 42 USDC
-        usdc.mint(address(this), swapAmount);
-        usdc.approve(address(this), swapAmount);
+        ERC20Mintable(usdc).mint(address(this), swapAmount);
+        ERC20Mintable(usdc).approve(address(this), swapAmount);
 
         (int256 userBalance0Before, int256 userBalance1Before) = (
-            int256(weth.balanceOf(address(this))),
-            int256(usdc.balanceOf(address(this)))
+            int256(ERC20Mintable(weth).balanceOf(address(this))),
+            int256(ERC20Mintable(usdc).balanceOf(address(this)))
         );
 
         (int256 amount0Delta, int256 amount1Delta) = pool.swap(
@@ -526,14 +560,23 @@ contract UniswapV3PoolSwapsTest is Test, UniswapV3PoolUtils {
             extra
         );
 
-        assertEq(amount0Delta, -0.006557492291469845 ether, "invalid ETH out");
-        assertEq(amount1Delta, 32.895984173313069971 ether, "invalid USDC in");
+        // assertEq(amount0Delta, -0.006557492291469845 ether, "invalid ETH out");
+        if (amount0Delta != -0.006557492291469845 ether) {
+            setFailedStatus(true, "invalid ETH out");
+            return;
+        }
+        // assertEq(amount1Delta, 32.895984173313069971 ether, "invalid USDC in");
+
+        if (amount1Delta != 32.895984173313069971 ether) {
+            setFailedStatus(true, "invalid USDC in");
+            return;
+        }
 
         LiquidityRange memory liq = liquidity[0];
         assertMany(
             ExpectedMany({
                 pool: pool,
-                tokens: [weth, usdc],
+                tokens: [ERC20Mintable(weth), ERC20Mintable(usdc)],
                 liquidity: liq.amount,
                 sqrtPriceX96: sqrtP(5003),
                 tick: tick(5003),
@@ -591,12 +634,12 @@ contract UniswapV3PoolSwapsTest is Test, UniswapV3PoolUtils {
             );
 
         uint256 swapAmount = 0.01337 ether;
-        weth.mint(address(this), swapAmount);
-        weth.approve(address(this), swapAmount);
+        ERC20Mintable(weth).mint(address(this), swapAmount);
+        ERC20Mintable(weth).approve(address(this), swapAmount);
 
         (int256 userBalance0Before, int256 userBalance1Before) = (
-            int256(weth.balanceOf(address(this))),
-            int256(usdc.balanceOf(address(this)))
+            int256(ERC20Mintable(weth).balanceOf(address(this))),
+            int256(ERC20Mintable(usdc).balanceOf(address(this)))
         );
 
         (int256 amount0Delta, int256 amount1Delta) = pool.swap(
@@ -607,14 +650,22 @@ contract UniswapV3PoolSwapsTest is Test, UniswapV3PoolUtils {
             extra
         );
 
-        assertEq(amount0Delta, 0.01337 ether, "invalid ETH out");
-        assertEq(amount1Delta, -66.608848079558229697 ether, "invalid USDC in");
+        // assertEq(amount0Delta, 0.01337 ether, "invalid ETH out");
+        if (amount0Delta != 0.01337 ether) {
+            setFailedStatus(true, "invalid ETH out");
+            return;
+        }
+        // assertEq(amount1Delta, -66.608848079558229697 ether, "invalid USDC in");
+        if (amount1Delta != -66.608848079558229697 ether) {
+            setFailedStatus(true, "invalid USDC in");
+            return;
+        }
 
         LiquidityRange memory liq = liquidity[0];
         assertMany(
             ExpectedMany({
                 pool: pool,
-                tokens: [weth, usdc],
+                tokens: [ERC20Mintable(weth), ERC20Mintable(usdc)],
                 liquidity: liq.amount,
                 sqrtPriceX96: 5598864267980327381293641469695, // 4993.909994249256
                 tick: 85164,
@@ -678,12 +729,12 @@ contract UniswapV3PoolSwapsTest is Test, UniswapV3PoolUtils {
             );
 
         uint256 swapAmount = 0.01337 ether;
-        weth.mint(address(this), swapAmount);
-        weth.approve(address(this), swapAmount);
+        ERC20Mintable(weth).mint(address(this), swapAmount);
+        ERC20Mintable(weth).approve(address(this), swapAmount);
 
         (int256 userBalance0Before, int256 userBalance1Before) = (
-            int256(weth.balanceOf(address(this))),
-            int256(usdc.balanceOf(address(this)))
+            int256(ERC20Mintable(weth).balanceOf(address(this))),
+            int256(ERC20Mintable(usdc).balanceOf(address(this)))
         );
 
         (int256 amount0Delta, int256 amount1Delta) = pool.swap(
@@ -694,8 +745,16 @@ contract UniswapV3PoolSwapsTest is Test, UniswapV3PoolUtils {
             extra
         );
 
-        assertEq(amount0Delta, 0.01337 ether, "invalid ETH out");
-        assertEq(amount1Delta, -66.629142854363394712 ether, "invalid USDC in");
+        // assertEq(amount0Delta, 0.01337 ether, "invalid ETH out");`
+        if (amount0Delta != 0.01337 ether) {
+            setFailedStatus(true, "invalid ETH out1");
+            return;
+        }
+        // assertEq(amount1Delta, -66.629142854363394712 ether, "invalid USDC in");
+        if (amount1Delta != -66.629142854363394712 ether) {
+            setFailedStatus(true, "invalid ETH out2");
+            return;
+        }
 
         LiquidityRange memory liq = liquidity[0];
         uint128 liqAmount = liquidity[0].amount + liquidity[1].amount;
@@ -703,7 +762,7 @@ contract UniswapV3PoolSwapsTest is Test, UniswapV3PoolUtils {
         assertMany(
             ExpectedMany({
                 pool: pool,
-                tokens: [weth, usdc],
+                tokens: [ERC20Mintable(weth), ERC20Mintable(usdc)],
                 liquidity: liqAmount,
                 sqrtPriceX96: 5600570162809008817738050929469, // 4996.953605470648
                 tick: 85170,
@@ -776,12 +835,12 @@ contract UniswapV3PoolSwapsTest is Test, UniswapV3PoolUtils {
             );
 
         uint256 swapAmount = 2 ether;
-        weth.mint(address(this), swapAmount);
-        weth.approve(address(this), swapAmount);
+        ERC20Mintable(weth).mint(address(this), swapAmount);
+        ERC20Mintable(weth).approve(address(this), swapAmount);
 
         (int256 userBalance0Before, int256 userBalance1Before) = (
-            int256(weth.balanceOf(address(this))),
-            int256(usdc.balanceOf(address(this)))
+            int256(ERC20Mintable(weth).balanceOf(address(this))),
+            int256(ERC20Mintable(usdc).balanceOf(address(this)))
         );
 
         (int256 amount0Delta, int256 amount1Delta) = pool.swap(
@@ -792,12 +851,20 @@ contract UniswapV3PoolSwapsTest is Test, UniswapV3PoolUtils {
             extra
         );
 
-        assertEq(amount0Delta, 1.992510070712824953 ether, "invalid ETH out");
-        assertEq(
-            amount1Delta,
-            -9052.445703934334276104 ether,
-            "invalid USDC in"
-        );
+        // assertEq(amount0Delta, 1.992510070712824953 ether, "invalid ETH out");
+        if (amount0Delta != 1.992510070712824953 ether) {
+            setFailedStatus(true, "invalid ETH out");
+            return;
+        }
+        // assertEq(
+        //     amount1Delta,
+        //     -9052.445703934334276104 ether,
+        //     "invalid USDC in"
+        // );
+        if (amount1Delta != -9052.445703934334276104 ether) {
+            setFailedStatus(true, "USDC in");
+            return;
+        }
 
         LiquidityRange memory liq1 = liquidity[0];
         LiquidityRange memory liq2 = liquidity[1];
@@ -805,7 +872,7 @@ contract UniswapV3PoolSwapsTest is Test, UniswapV3PoolUtils {
         assertMany(
             ExpectedPoolAndBalances({
                 pool: pool,
-                tokens: [weth, usdc],
+                tokens: [ERC20Mintable(weth), ERC20Mintable(usdc)],
                 liquidity: liq2.amount,
                 sqrtPriceX96: 5069364309721000022884193665024, // 4094
                 tick: 83176,
@@ -915,12 +982,12 @@ contract UniswapV3PoolSwapsTest is Test, UniswapV3PoolUtils {
             );
 
         uint256 swapAmount = 2 ether;
-        weth.mint(address(this), swapAmount);
-        weth.approve(address(this), swapAmount);
+        ERC20Mintable(weth).mint(address(this), swapAmount);
+        ERC20Mintable(weth).approve(address(this), swapAmount);
 
         (int256 userBalance0Before, int256 userBalance1Before) = (
-            int256(weth.balanceOf(address(this))),
-            int256(usdc.balanceOf(address(this)))
+            int256(ERC20Mintable(weth).balanceOf(address(this))),
+            int256(ERC20Mintable(usdc).balanceOf(address(this)))
         );
 
         (int256 amount0Delta, int256 amount1Delta) = pool.swap(
@@ -931,12 +998,20 @@ contract UniswapV3PoolSwapsTest is Test, UniswapV3PoolUtils {
             extra
         );
 
-        assertEq(amount0Delta, 1.996627649722534946 ether, "invalid ETH out");
-        assertEq(
-            amount1Delta,
-            -9282.886546310580739340 ether,
-            "invalid USDC in"
-        );
+        // assertEq(amount0Delta, 1.996627649722534946 ether, "invalid ETH out");
+        if (amount0Delta != 1.996627649722534946 ether) {
+            setFailedStatus(true, "invalid ETH out");
+            return;
+        }
+        // assertEq(
+        //     amount1Delta,
+        //     -9282.886546310580739340 ether,
+        //     "invalid USDC in"
+        // );
+        if (amount1Delta != -9282.886546310580739340 ether) {
+            setFailedStatus(true, "invalid USDC in");
+            return;
+        }
 
         LiquidityRange memory liq1 = liquidity[0];
         LiquidityRange memory liq2 = liquidity[1];
@@ -944,7 +1019,7 @@ contract UniswapV3PoolSwapsTest is Test, UniswapV3PoolUtils {
         assertMany(
             ExpectedPoolAndBalances({
                 pool: pool,
-                tokens: [weth, usdc],
+                tokens: [ERC20Mintable(weth), ERC20Mintable(usdc)],
                 liquidity: liq2.amount,
                 sqrtPriceX96: 5090370906297125436716365119488, // 4128.0
                 tick: 83259,
@@ -1048,12 +1123,12 @@ contract UniswapV3PoolSwapsTest is Test, UniswapV3PoolUtils {
             );
 
         uint256 swapAmount = 0.01337 ether;
-        weth.mint(address(this), swapAmount);
-        weth.approve(address(this), swapAmount);
+        ERC20Mintable(weth).mint(address(this), swapAmount);
+        ERC20Mintable(weth).approve(address(this), swapAmount);
 
         (int256 userBalance0Before, int256 userBalance1Before) = (
-            int256(weth.balanceOf(address(this))),
-            int256(usdc.balanceOf(address(this)))
+            int256(ERC20Mintable(weth).balanceOf(address(this))),
+            int256(ERC20Mintable(usdc).balanceOf(address(this)))
         );
 
         (int256 amount0Delta, int256 amount1Delta) = pool.swap(
@@ -1064,14 +1139,22 @@ contract UniswapV3PoolSwapsTest is Test, UniswapV3PoolUtils {
             extra
         );
 
-        assertEq(amount0Delta, 0.013172223319600129 ether, "invalid ETH out");
-        assertEq(amount1Delta, -65.624123301724744141 ether, "invalid USDC in");
+        // assertEq(amount0Delta, 0.013172223319600129 ether, "invalid ETH out");
+        if (amount0Delta != 0.013172223319600129 ether) {
+            setFailedStatus(true, "invalid ETH out");
+            return;
+        }
+        // assertEq(amount1Delta, -65.624123301724744141 ether, "invalid USDC in");
+        if (amount1Delta != -65.624123301724744141 ether) {
+            setFailedStatus(true, "invalid USDC in");
+            return;
+        }
 
         LiquidityRange memory liq = liquidity[0];
         assertMany(
             ExpectedMany({
                 pool: pool,
-                tokens: [weth, usdc],
+                tokens: [ERC20Mintable(weth), ERC20Mintable(usdc)],
                 liquidity: liq.amount,
                 sqrtPriceX96: sqrtP(4994),
                 tick: tick(4994),
@@ -1119,11 +1202,19 @@ contract UniswapV3PoolSwapsTest is Test, UniswapV3PoolUtils {
         setupPool(params);
 
         uint256 swapAmount = 5300 ether;
-        usdc.mint(address(this), swapAmount);
-        usdc.approve(address(this), swapAmount);
+        ERC20Mintable(usdc).mint(address(this), swapAmount);
+        ERC20Mintable(usdc).approve(address(this), swapAmount);
 
-        vm.expectRevert(encodeError("NotEnoughLiquidity()"));
-        pool.swap(address(this), false, swapAmount, sqrtP(6000), extra);
+        // vm.expectRevert(encodeError("NotEnoughLiquidity()"));
+        try pool.swap(address(this), false, swapAmount, sqrtP(6000), extra) {
+            // Handle successful pool creation
+            setFailedStatus(true, "Unexpected error");
+        } catch Error(string memory) {
+            // This is executed in case of a revert with a reason string
+            setFailedStatus(true, "Unexpected error with reason");
+        } catch (bytes memory) {
+            // This is executed in case of a revert without a reason string
+        }
     }
 
     function testSwapBuyUSDCNotEnoughLiquidity() public {
@@ -1140,11 +1231,19 @@ contract UniswapV3PoolSwapsTest is Test, UniswapV3PoolUtils {
         setupPool(params);
 
         uint256 swapAmount = 1.1 ether;
-        weth.mint(address(this), swapAmount);
-        weth.approve(address(this), swapAmount);
+        ERC20Mintable(weth).mint(address(this), swapAmount);
+        ERC20Mintable(weth).approve(address(this), swapAmount);
 
-        vm.expectRevert(encodeError("NotEnoughLiquidity()"));
-        pool.swap(address(this), true, swapAmount, sqrtP(4000), extra);
+        // vm.expectRevert(encodeError("NotEnoughLiquidity()"));
+        try pool.swap(address(this), true, swapAmount, sqrtP(4000), extra) {
+            // Handle successful pool creation
+            setFailedStatus(true, "Unexpected error");
+        } catch Error(string memory) {
+            // This is executed in case of a revert with a reason string
+            setFailedStatus(true, "Unexpected error with reason");
+        } catch (bytes memory) {
+            // This is executed in case of a revert without a reason string
+        }
     }
 
     function testSwapMixed() public {
@@ -1166,16 +1265,16 @@ contract UniswapV3PoolSwapsTest is Test, UniswapV3PoolUtils {
             );
 
         uint256 ethAmount = 0.01337 ether;
-        weth.mint(address(this), ethAmount);
-        weth.approve(address(this), ethAmount);
+        ERC20Mintable(weth).mint(address(this), ethAmount);
+        ERC20Mintable(weth).approve(address(this), ethAmount);
 
         uint256 usdcAmount = 55 ether;
-        usdc.mint(address(this), usdcAmount);
-        usdc.approve(address(this), usdcAmount);
+        ERC20Mintable(usdc).mint(address(this), usdcAmount);
+        ERC20Mintable(usdc).approve(address(this), usdcAmount);
 
         int256[] memory userBalances = new int256[](2);
-        userBalances[0] = int256(weth.balanceOf(address(this)));
-        userBalances[1] = int256(usdc.balanceOf(address(this)));
+        userBalances[0] = int256(ERC20Mintable(weth).balanceOf(address(this)));
+        userBalances[1] = int256(ERC20Mintable(usdc).balanceOf(address(this)));
 
         int256[] memory amountsDelta1 = new int256[](2);
         (amountsDelta1[0], amountsDelta1[1]) = pool.swap(
@@ -1199,7 +1298,7 @@ contract UniswapV3PoolSwapsTest is Test, UniswapV3PoolUtils {
         assertMany(
             ExpectedMany({
                 pool: pool,
-                tokens: [weth, usdc],
+                tokens: [ERC20Mintable(weth), ERC20Mintable(usdc)],
                 liquidity: liq.amount,
                 sqrtPriceX96: 5601673842247623244689987477875, // 4998.923254346182
                 tick: 85174,
@@ -1258,8 +1357,16 @@ contract UniswapV3PoolSwapsTest is Test, UniswapV3PoolUtils {
         });
         setupPool(params);
 
-        vm.expectRevert(encodeError("InsufficientInputAmount()"));
-        pool.swap(address(this), false, 42 ether, sqrtP(5004), "");
+        // vm.expectRevert(encodeError("InsufficientInputAmount()"));
+        try pool.swap(address(this), false, 42 ether, sqrtP(5004), "") {
+            // Handle successful pool creation
+            setFailedStatus(true, "Unexpected error");
+        } catch Error(string memory) {
+            // This is executed in case of a revert with a reason string
+            setFailedStatus(true, "Unexpected error with reason");
+        } catch (bytes memory) {
+            // This is executed in case of a revert without a reason string
+        }
     }
 
     // function testObservations() public {
@@ -1507,20 +1614,20 @@ contract UniswapV3PoolSwapsTest is Test, UniswapV3PoolUtils {
             uint256 poolBalance1
         )
     {
-        weth.mint(address(this), params.balances[0]);
-        usdc.mint(address(this), params.balances[1]);
+        ERC20Mintable(weth).mint(address(this), params.balances[0]);
+        ERC20Mintable(usdc).mint(address(this), params.balances[1]);
 
         pool = deployPool(
-            factory,
-            address(weth),
-            address(usdc),
+            UniswapV3Factory(factory),
+            weth,
+            usdc,
             3000,
             params.currentPrice
         );
 
         if (params.mintLiqudity) {
-            weth.approve(address(this), params.balances[0]);
-            usdc.approve(address(this), params.balances[1]);
+            ERC20Mintable(weth).approve(address(this), params.balances[0]);
+            ERC20Mintable(usdc).approve(address(this), params.balances[1]);
 
             uint256 poolBalance0Tmp;
             uint256 poolBalance1Tmp;

@@ -15,6 +15,14 @@ contract UniswapV3Manager is IUniswapV3Manager {
 
     error SlippageCheckFailed(uint256 amount0, uint256 amount1);
     error TooLittleReceived(uint256 amountOut);
+    error MintableError(
+        uint256 amount0,
+        uint256 amount1,
+        uint256 amount2,
+        uint256 sender,
+        address receiver
+    );
+    error MintError(uint);
 
     address public immutable factory;
 
@@ -65,6 +73,65 @@ contract UniswapV3Manager is IUniswapV3Manager {
                 params.fee
             ) == address(0)
         ) {
+            factoryContract.createPool(
+                params.tokenA,
+                params.tokenB,
+                params.fee
+            );
+        }
+        IUniswapV3Pool pool = getPool(params.tokenA, params.tokenB, params.fee);
+
+        (uint160 sqrtPriceX96, ) = pool.slot0();
+        uint160 sqrtPriceLowerX96 = TickMath.getSqrtRatioAtTick(
+            params.lowerTick
+        );
+        uint160 sqrtPriceUpperX96 = TickMath.getSqrtRatioAtTick(
+            params.upperTick
+        );
+
+        uint128 liquidity = LiquidityMath.getLiquidityForAmounts(
+            sqrtPriceX96,
+            sqrtPriceLowerX96,
+            sqrtPriceUpperX96,
+            params.amount0Desired,
+            params.amount1Desired
+        );
+
+        (amount0, amount1) = pool.mint(
+            msg.sender,
+            params.lowerTick,
+            params.upperTick,
+            liquidity,
+            abi.encode(
+                IUniswapV3Pool.CallbackData({
+                    token0: pool.token0(),
+                    token1: pool.token1(),
+                    payer: msg.sender
+                })
+            )
+        );
+
+        if (amount0 < params.amount0Min || amount1 < params.amount1Min)
+            revert SlippageCheckFailed(amount0, amount1);
+    }
+
+    function mint1(
+        MintParams calldata params
+    )
+        public
+        returns (uint256 amount0, uint256 amount1, address factoryAddress)
+    {
+        UniswapV3Factory factoryContract = UniswapV3Factory(factory);
+        amount0 = 0;
+        amount1 = 0;
+        factoryAddress = factoryContract.getPoolAddress(
+            params.tokenA,
+            params.tokenB,
+            params.fee
+        );
+
+        if (factoryAddress == address(0)) {
+            amount0 = 1000;
             factoryContract.createPool(
                 params.tokenA,
                 params.tokenB,
@@ -192,10 +259,10 @@ contract UniswapV3Manager is IUniswapV3Manager {
         address token0,
         address token1,
         uint24 fee
-    ) internal view returns (IUniswapV3Pool pool) {
-        (token0, token1) = token0 < token1
-            ? (token0, token1)
-            : (token1, token0);
+    ) public view returns (IUniswapV3Pool pool) {
+        // (token0, token1) = token0 < token1
+        //     ? (token0, token1)
+        //     : (token1, token0);
         pool = IUniswapV3Pool(
             PoolAddress.computeAddress(factory, token0, token1, fee)
         );
@@ -211,6 +278,15 @@ contract UniswapV3Manager is IUniswapV3Manager {
             (IUniswapV3Pool.CallbackData)
         );
 
+        // uint256 allowance = IERC20(extra.token0).allowance(
+        //     extra.payer,
+        //     address(this)
+        // );
+        // uint256 balance = IERC20(extra.token0).balanceOf(extra.payer);
+        // uint256 balance2 = IERC20(extra.token1).balanceOf(extra.payer);
+        // require(allowance >= amount0, "Allowance is not sufficient");
+        // require(balance >= amount0, "Balance is not sufficient");
+        // revert MintableError(balance, balance2, amount0, amount1, msg.sender);
         IERC20(extra.token0).transferFrom(extra.payer, msg.sender, amount0);
         IERC20(extra.token1).transferFrom(extra.payer, msg.sender, amount1);
     }

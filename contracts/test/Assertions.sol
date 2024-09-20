@@ -18,24 +18,44 @@ abstract contract Assertions is Test {
 
     function assertPoolState(ExpectedPoolState memory expected) internal {
         (uint160 sqrtPriceX96, int24 currentTick) = expected.pool.slot0();
-        assertEq(sqrtPriceX96, expected.sqrtPriceX96, "invalid current sqrtP");
-        assertEq(currentTick, expected.tick, "invalid current tick");
-        assertEq(
-            expected.pool.liquidity(),
-            expected.liquidity,
-            "invalid current liquidity"
-        );
+        // assertEq(sqrtPriceX96, expected.sqrtPriceX96, "invalid current sqrtP");
+        if (sqrtPriceX96 != expected.sqrtPriceX96) {
+            setFailedStatus(true, "iinvalid current sqrtP");
+            return;
+        }
+        // assertEq(currentTick, expected.tick, "invalid current tick");
+        if (currentTick != expected.tick) {
+            setFailedStatus(true, "iinvalid current tick");
+            return;
+        }
+        // assertEq(
+        //     expected.pool.liquidity(),
+        //     expected.liquidity,
+        //     "invalid current liquidity"
+        // );
+        if (expected.pool.liquidity() != expected.liquidity) {
+            setFailedStatus(true, "iinvalid current liquidity");
+            return;
+        }
 
-        assertEq(
-            expected.pool.feeGrowthGlobal0X128(),
-            expected.fees[0],
-            "incorrect feeGrowthGlobal0X128"
-        );
-        assertEq(
-            expected.pool.feeGrowthGlobal1X128(),
-            expected.fees[1],
-            "incorrect feeGrowthGlobal1X128"
-        );
+        // assertEq(
+        //     expected.pool.feeGrowthGlobal0X128(),
+        //     expected.fees[0],
+        //     "incorrect feeGrowthGlobal0X128"
+        // );
+        if (expected.pool.feeGrowthGlobal0X128() != expected.fees[0]) {
+            setFailedStatus(true, "incorrect feeGrowthGlobal0X128");
+            return;
+        }
+        // assertEq(
+        //     expected.pool.feeGrowthGlobal1X128(),
+        //     expected.fees[1],
+        //     "incorrect feeGrowthGlobal1X128"
+        // );
+        if (expected.pool.feeGrowthGlobal1X128() != expected.fees[1]) {
+            setFailedStatus(true, "incorrect feeGrowthGlobal1X128");
+            return;
+        }
     }
 
     struct ExpectedBalances {
@@ -48,27 +68,43 @@ abstract contract Assertions is Test {
     }
 
     function assertBalances(ExpectedBalances memory expected) internal {
-        assertEq(
-            expected.tokens[0].balanceOf(address(this)),
-            expected.userBalance0,
-            "incorrect token0 balance of user"
-        );
-        assertEq(
-            expected.tokens[1].balanceOf(address(this)),
-            expected.userBalance1,
-            "incorrect token1 balance of user"
-        );
+        // assertEq(
+        //     expected.tokens[0].balanceOf(address(this)),
+        //     expected.userBalance0,
+        //     "incorrect token0 balance of user"
+        // );
+        if (expected.tokens[0].balanceOf(address(this)) != expected.userBalance0) {
+            setFailedStatus(true, "incorrect token0 balance of user");
+            return;
+        }
+        // assertEq(
+        //     expected.tokens[1].balanceOf(address(this)),
+        //     expected.userBalance1,
+        //     "incorrect token1 balance of user"
+        // );
+        if (expected.tokens[1].balanceOf(address(this)) != expected.userBalance1) {
+            setFailedStatus(true, "incorrect token1 balance of user");
+            return;
+        }
 
-        assertEq(
-            expected.tokens[0].balanceOf(address(expected.pool)),
-            expected.poolBalance0,
-            "incorrect token0 balance of pool"
-        );
-        assertEq(
-            expected.tokens[1].balanceOf(address(expected.pool)),
-            expected.poolBalance1,
-            "incorrect token1 balance of pool"
-        );
+        // assertEq(
+        //     expected.tokens[0].balanceOf(address(expected.pool)),
+        //     expected.poolBalance0,
+        //     "incorrect token0 balance of pool"
+        // );
+        if (expected.tokens[0].balanceOf(address(expected.pool)) != expected.poolBalance0) {
+            setFailedStatus(true, "incorrect token0 balance of pool");
+            return;
+        }
+        // assertEq(
+        //     expected.tokens[1].balanceOf(address(expected.pool)),
+        //     expected.poolBalance1,
+        //     "incorrect token1 balance of pool"
+        // );
+        if (expected.tokens[1].balanceOf(address(expected.pool)) != expected.poolBalance1) {
+            setFailedStatus(true, "incorrect token0 balance of pool");
+            return;
+        }
     }
 
     struct ExpectedTick {
@@ -94,21 +130,33 @@ abstract contract Assertions is Test {
             ,
 
         ) = expected.pool.ticks(expected.tick);
-        assertEq(
-            initialized,
-            expected.initialized,
-            "incorrect tick initialized state"
-        );
-        assertEq(
-            liquidityGross,
-            expected.liquidityGross,
-            "incorrect tick gross liquidity"
-        );
-        assertEq(
-            liquidityNet,
-            expected.liquidityNet,
-            "incorrect tick net liquidity"
-        );
+        // assertEq(
+        //     initialized,
+        //     expected.initialized,
+        //     "incorrect tick initialized state"
+        // );
+        if (initialized != expected.initialized) {
+            setFailedStatus(true, "incorrect tick initialized state");
+            return;
+        }
+        // assertEq(
+        //     liquidityGross,
+        //     expected.liquidityGross,
+        //     "incorrect tick gross liquidity"
+        // );
+        if (liquidityGross != expected.liquidityGross) {
+            setFailedStatus(true, "incorrect tick gross state");
+            return;
+        }
+        // assertEq(
+        //     liquidityNet,
+        //     expected.liquidityNet,
+        //     "incorrect tick net liquidity"
+        // );
+        if (liquidityNet != expected.liquidityNet) {
+            setFailedStatus(true, "incorrect tick net state");
+            return;
+        }
 
         // TODO: fix, must be the same as 'initialized'
         // assertEq(
@@ -343,27 +391,47 @@ abstract contract Assertions is Test {
             uint128 tokensOwed1
         ) = params.pool.positions(positionKey);
 
-        assertEq(liquidity, params.liquidity, "incorrect position liquidity");
-        assertEq(
-            feeGrowthInside0LastX128,
-            params.feeGrowth[0],
-            "incorrect position fee growth for token0"
-        );
-        assertEq(
-            feeGrowthInside1LastX128,
-            params.feeGrowth[1],
-            "incorrect position fee growth for token1"
-        );
-        assertEq(
-            tokensOwed0,
-            params.tokensOwed[0],
-            "incorrect position tokens owed for token0"
-        );
-        assertEq(
-            tokensOwed1,
-            params.tokensOwed[1],
-            "incorrect position tokens owed for token1"
-        );
+        // assertEq(liquidity, params.liquidity, "incorrect position liquidity");
+        if (liquidity != params.liquidity) {
+            setFailedStatus(true, "incorrect position liquidity");
+            return;
+        }
+        // assertEq(
+        //     feeGrowthInside0LastX128,
+        //     params.feeGrowth[0],
+        //     "incorrect position fee growth for token0"
+        // );
+        if (feeGrowthInside0LastX128 != params.feeGrowth[0]) {
+            setFailedStatus(true, "incorrect position fee growth for token0");
+            return;
+        }
+        // assertEq(
+        //     feeGrowthInside1LastX128,
+        //     params.feeGrowth[1],
+        //     "incorrect position fee growth for token1"
+        // );
+        if (feeGrowthInside1LastX128 != params.feeGrowth[1]) {
+            setFailedStatus(true, "incorrect position fee growth for token1");
+            return;
+        }
+        // assertEq(
+        //     tokensOwed0,
+        //     params.tokensOwed[0],
+        //     "incorrect position tokens owed for token0"
+        // );
+        if (tokensOwed0 != params.tokensOwed[0]) {
+            setFailedStatus(true, "incorrect position tokens owed for token0");
+            return;
+        }
+        // assertEq(
+        //     tokensOwed1,
+        //     params.tokensOwed[1],
+        //     "incorrect position tokens owed for token1"
+        // );
+        if (tokensOwed1 != params.tokensOwed[1]) {
+            setFailedStatus(true, "incorrect position tokens owed for token1");
+            return;
+        }
     }
 
     // function assertTokenURI(
