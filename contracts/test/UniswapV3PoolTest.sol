@@ -695,6 +695,105 @@ contract UniswapV3PoolTest is Test, UniswapV3PoolUtils {
         }
     }
 
+    function testCollectOverflowStandardRange() public {
+        (
+            LiquidityRange[] memory liquidity,
+            uint256 poolBalance0,
+            uint256 poolBalance1
+        ) = setupPool(
+                PoolParams({
+                    balances: [uint256(1 ether), 5000 ether],
+                    currentPrice: 5000,
+                    liquidity: liquidityRanges(
+                        liquidityRange(4545, 5500, 1 ether, 5000 ether, 5000),
+                        liquidityRange(4000, 6250, 0.8 ether, 4000 ether, 5000)
+                    ),
+                    transferInMintCallback: true,
+                    transferInSwapCallback: true,
+                    mintLiqudity: true
+                })
+            );
+        LiquidityRange memory liq = liquidity[0];
+
+        uint256 swapAmount = 42 ether; // 42 USDC
+        ERC20Mintable(usdc).mint(address(this), swapAmount);
+        ERC20Mintable(usdc).approve(address(this), swapAmount);
+
+        (int256 swapAmount0, int256 swapAmount1) = pool.swap(
+            address(this),
+            false,
+            swapAmount,
+            sqrtP(5004),
+            encodeExtra(weth, usdc, address(this))
+        );
+
+        pool.burn(liq.lowerTick, liq.upperTick, liq.amount);
+
+        bytes32 positionKey = keccak256(
+            abi.encodePacked(address(this), liq.lowerTick, liq.upperTick)
+        );
+
+        (, , , uint128 tokensOwed0, uint128 tokensOwed1) = pool.positions(
+            positionKey
+        );
+
+        if (tokensOwed0 != uint256(int256(poolBalance0) + swapAmount0 - 1)) {
+            setFailedStatus(true, "incorrect tokens owed for token0");
+            return;
+        }
+        if (tokensOwed1 != uint256(int256(poolBalance1) + swapAmount1 - 2)) {
+            setFailedStatus(true, "incorrect tokens owed for token1");
+            return;
+        }
+
+        (uint128 amountCollected0, uint128 amountCollected1) = pool.collect(
+            address(this),
+            liq.lowerTick,
+            liq.upperTick,
+            tokensOwed0,
+            tokensOwed1
+        );
+        if (amountCollected0 != tokensOwed0) {
+            setFailedStatus(true, "incorrect collected amount for token 0");
+            return;
+        }
+        if (amountCollected1 != tokensOwed1) {
+            setFailedStatus(true, "incorrect collected amount for token 1");
+            return;
+        }
+        if (ERC20Mintable(weth).balanceOf(address(pool)) != 1) {
+            setFailedStatus(
+                true,
+                "incorrect pool balance of token0 after collect"
+            );
+            return;
+        }
+        if (ERC20Mintable(usdc).balanceOf(address(pool)) != 2) {
+            setFailedStatus(
+                true,
+                "incorrect pool balance of token1 after collect"
+            );
+            return;
+        }
+
+        (, , , tokensOwed0, tokensOwed1) = pool.positions(positionKey);
+
+        if (tokensOwed0 != 0) {
+            setFailedStatus(
+                true,
+                "incorrect owed amount for token 0 after collect"
+            );
+            return;
+        }
+        if (tokensOwed1 != 0) {
+            setFailedStatus(
+                true,
+                "incorrect owed amount for token 1 after collect"
+            );
+            return;
+        }
+    }
+
     function testCollectAfterZeroBurn() public {
         (
             LiquidityRange[] memory liquidity,

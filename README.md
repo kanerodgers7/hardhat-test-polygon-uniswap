@@ -1,4 +1,4 @@
-# PST token development details
+# Dex development details
 
 This page provides general information about the used contract and required files around the contract. All contract source codes can be found under the _src_ folder.
 
@@ -6,17 +6,16 @@ This page provides general information about the used contract and required file
 
 The following are the main contract features:
 
-- `Symbol`: A unique token symbol.
+- Fork of Uniswap V3 for Polygon.
 
-- `Minting`: Ability to mint new tokens, restricted to the contract owner or an Admin role.
-- `Burning`: Ability to burn tokens, available to the contract owner, Admin, and any token holder.
-- `Transfer`: Standard ERC-20 transfer functionality, with a default fee applied.
-  Option to transfer tokens without incurring the fee, restricted to owner.
-- `Approve/TransferFrom`: Allow third parties to transfer tokens on behalf of the token holder, with the fee applied.
-- `Fee Mechanism`: A percentage fee is collected on each transfer and transferFrom, sent to the contract address.
-- `Set Fee Address`: The contract allows setting and changing the address that collects the fees, restricted to owner/Admin.
-- `Set Fee Percentage`: Allows changing the fee percentage (0.1% of every transaction for default), restricted to owner/Admin.
-- `Harvest`: Only owner can trigger transactions and the accumulated fee is transferred to fee address.
+- Tiered transaction fees.
+- Allow users add arbitrary coin/ERC20 Pools.
+- Concentrated liquidity model
+  - Default range of +/-20% of current price
+  - Option for custom ranges (for a fee)
+- Yield and dividend features:
+  - Auto-compounds yields into the pool
+  - Provides harvestable rewards for LPs (native coin or token e.g. HKD)
 
 ## Unit tests
 
@@ -53,16 +52,15 @@ A sample deployment script has been created. It deploys all the contracts and al
 
   **_`npx hardhat verify --network [network] deployed_address args`_**
 
-  3input parameters are required:
-
-        Token Name
-        Token Symbol
-        Fee Address
-
 - here is example
 
-  `npx hardhat verify --network base-amoy 0xf395df678de56fb50910cd79671c131f050775b8 "PSToken", "PST-AMZ", "0x65b20c217a1f1D66885Fb1dd33CDf664B0510D5f"`
+  `npx hardhat verify --network base-amoy 0x1A8F35390151042886dDf2221886AAc25E689b3F`
 
 ## Latest Deployment
 
-The latest test deployment to Amoy network is [here](https://amoy.polygonscan.com/address/0xf395df678de56fb50910cd79671c131f050775b8#readContract)
+The latest test deployment to Amoy network is following
+
+- [Dex Factory](https://amoy.polygonscan.com/address/0x1A8F35390151042886dDf2221886AAc25E689b3F)
+
+- [Dex QuoterFact](https://amoy.polygonscan.com/address/0x151915948daF2D0d7a80d1889920586ef13bb359)
+- [Dex ManagerFact](https://amoy.polygonscan.com/address/0x019614711545C39Efc47F803B0759bc316691B88)

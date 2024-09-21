@@ -27,7 +27,7 @@ contract UniswapV3Factory is IUniswapV3PoolDeployer {
         fees[100] = 1;
         fees[500] = 10;
         fees[3000] = 60;
-        fees[1000] = 200;
+        fees[10000] = 200;
     }
 
     function getPoolAddress(

@@ -51,6 +51,7 @@ const config = {
       url: "https://polygon-amoy.drpc.org",
       accounts: [process.env.PRIVATE_KEY],
       gasPrice: 30000000000,
+      timeout: 200000
     },
     hardhat: {
       allowUnlimitedContractSize: true
@@ -72,7 +73,7 @@ const config = {
     artifacts: "./artifacts",
   },
   mocha: {
-    timeout: 20000,
+    timeout: 600000,
   },
   ignition: {
     root: "./src/ignition",
@@ -80,7 +81,7 @@ const config = {
     output: "./output",
     clean: true,
   },
-  defaultNetwork: "hardhat",
+  defaultNetwork: "base-amoy",
 };
 
 module.exports = config;
