@@ -2,7 +2,9 @@
 pragma solidity ^0.8.14;
 
 import "./FixedPoint96.sol";
+import "./TickMath.sol";
 import "prb-math/contracts/PRBMath.sol";
+import "abdk-libraries-solidity/ABDKMath64x64.sol";
 
 library Math {
     /// @notice Calculates amount0 delta between two prices
@@ -185,6 +187,54 @@ library Math {
                 div(numerator, denominator),
                 gt(mod(numerator, denominator), 0)
             )
+        }
+    }
+
+    function sqrtP(uint256 price) internal pure returns (uint160) {
+        return
+            uint160(
+                int160(
+                    ABDKMath64x64.sqrt(int128(int256(price << 64))) <<
+                        (FixedPoint96.RESOLUTION - 64)
+                )
+            );
+    }
+    
+    function sqrtPFromDecimal(uint256 price) internal pure returns (uint160) {
+        return
+            uint160(
+                int160(
+                    (ABDKMath64x64.sqrt(int128(int256(price))) / 1000000000) <<
+                        (FixedPoint96.RESOLUTION - 32)
+                )
+            );
+    }
+
+    function divRound(
+        int128 x,
+        int128 y
+    ) internal pure returns (int128 result) {
+        int128 quot = ABDKMath64x64.div(x, y);
+        result = quot >> 64;
+
+        // Check if remainder is greater than 0.5
+        if (quot % 2 ** 64 >= 0x8000000000000000) {
+            result += 1;
+        }
+    }
+
+    function nearestUsableTick(
+        int24 tick_,
+        uint24 tickSpacing
+    ) internal pure returns (int24 result) {
+        result =
+            int24(divRound(int128(tick_), int128(int24(tickSpacing)))) *
+            int24(tickSpacing);
+
+        if (result < TickMath.MIN_TICK) {
+            result += int24(tickSpacing);
+        } else if (result > TickMath.MAX_TICK) {
+            result -= int24(tickSpacing);
         }
     }
 }

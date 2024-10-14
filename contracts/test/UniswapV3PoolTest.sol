@@ -8,14 +8,15 @@ import "./UniswapV3PoolUtilsTest.sol";
 import "../interfaces/IUniswapV3Pool.sol";
 import "../lib/LiquidityMath.sol";
 import "../lib/TickMath.sol";
-import "../UniswapV3Factory.sol";
-import "../UniswapV3Pool.sol";
+import "../StratoSwapFactory.sol";
+import "../StratoSwapPool.sol";
 
 contract UniswapV3PoolTest is Test, UniswapV3PoolUtils {
     address weth;
     address usdc;
+    address donate;
     address factory;
-    UniswapV3Pool pool;
+    StratoSwapPool pool;
 
     bool transferInMintCallback = true;
 
@@ -23,15 +24,21 @@ contract UniswapV3PoolTest is Test, UniswapV3PoolUtils {
 
     // bool flashCallbackCalled = false;
 
-    function setUp(address _weth, address _usdc, address _factory) public {
+    function setUp(
+        address _weth,
+        address _usdc,
+        address _donate,
+        address _factory
+    ) public {
         weth = _weth; //new ERC20Mintable("Ether", "ETH", 18);
         usdc = _usdc; //new ERC20Mintable("USDC", "USDC", 18);
+        donate = _donate;
         factory = _factory; //new UniswapV3Factory();
     }
 
     function testInitialize() public {
-        pool = UniswapV3Pool(
-            UniswapV3Factory(factory).createPool(weth, usdc, 3000)
+        pool = StratoSwapPool(
+            StratoSwapFactory(factory).createPool(weth, usdc, 3000)
         );
 
         (uint160 sqrtPriceX96, int24 tick) = pool.slot0();
@@ -53,7 +60,7 @@ contract UniswapV3PoolTest is Test, UniswapV3PoolUtils {
         //     "invalid next observation cardinality"
         // );
 
-        pool.initialize(sqrtP(31337));
+        pool.initialize(sqrtP(31337), donate);
 
         (sqrtPriceX96, tick) = pool.slot0();
         // assertEq(
@@ -79,7 +86,7 @@ contract UniswapV3PoolTest is Test, UniswapV3PoolUtils {
         // );
 
         // vm.expectRevert(encodeError("AlreadyInitialized()"));
-        try pool.initialize(sqrtP(42)) {
+        try pool.initialize(sqrtP(42), donate) {
             // Handle successful pool creation
             setFailedStatus(true, "Unexpected error");
         } catch Error(string memory) {
@@ -406,6 +413,7 @@ contract UniswapV3PoolTest is Test, UniswapV3PoolUtils {
         );
 
         (uint256 burnAmount0, uint256 burnAmount1) = pool.burn(
+            address(this),
             liquidity[0].lowerTick,
             liquidity[0].upperTick,
             liquidity[0].amount
@@ -493,6 +501,7 @@ contract UniswapV3PoolTest is Test, UniswapV3PoolUtils {
         );
 
         (uint256 burnAmount0, uint256 burnAmount1) = pool.burn(
+            address(this),
             liquidity[0].lowerTick,
             liquidity[0].upperTick,
             liquidity[0].amount / 2
@@ -587,7 +596,7 @@ contract UniswapV3PoolTest is Test, UniswapV3PoolUtils {
             encodeExtra(weth, usdc, address(this))
         );
 
-        pool.burn(liq.lowerTick, liq.upperTick, liq.amount);
+        pool.burn(address(this), liq.lowerTick, liq.upperTick, liq.amount);
 
         bytes32 positionKey = keccak256(
             abi.encodePacked(address(this), liq.lowerTick, liq.upperTick)
@@ -617,6 +626,7 @@ contract UniswapV3PoolTest is Test, UniswapV3PoolUtils {
         }
 
         (uint128 amountCollected0, uint128 amountCollected1) = pool.collect(
+            address(this),
             address(this),
             liq.lowerTick,
             liq.upperTick,
@@ -727,7 +737,7 @@ contract UniswapV3PoolTest is Test, UniswapV3PoolUtils {
             encodeExtra(weth, usdc, address(this))
         );
 
-        pool.burn(liq.lowerTick, liq.upperTick, liq.amount);
+        pool.burn(address(this), liq.lowerTick, liq.upperTick, liq.amount);
 
         bytes32 positionKey = keccak256(
             abi.encodePacked(address(this), liq.lowerTick, liq.upperTick)
@@ -747,6 +757,7 @@ contract UniswapV3PoolTest is Test, UniswapV3PoolUtils {
         }
 
         (uint128 amountCollected0, uint128 amountCollected1) = pool.collect(
+            msg.sender,
             address(this),
             liq.lowerTick,
             liq.upperTick,
@@ -825,7 +836,7 @@ contract UniswapV3PoolTest is Test, UniswapV3PoolUtils {
             encodeExtra(weth, usdc, address(this))
         );
 
-        pool.burn(liq.lowerTick, liq.upperTick, 0);
+        pool.burn(address(this), liq.lowerTick, liq.upperTick, 0);
 
         bytes32 positionKey = keccak256(
             abi.encodePacked(address(this), liq.lowerTick, liq.upperTick)
@@ -851,6 +862,7 @@ contract UniswapV3PoolTest is Test, UniswapV3PoolUtils {
         }
 
         (uint128 amountCollected0, uint128 amountCollected1) = pool.collect(
+            address(this),
             address(this),
             liq.lowerTick,
             liq.upperTick,
@@ -935,7 +947,7 @@ contract UniswapV3PoolTest is Test, UniswapV3PoolUtils {
             encodeExtra(weth, usdc, address(this))
         );
 
-        pool.burn(liq.lowerTick, liq.upperTick, liq.amount);
+        pool.burn(address(this), liq.lowerTick, liq.upperTick, liq.amount);
 
         bytes32 positionKey = keccak256(
             abi.encodePacked(address(this), liq.lowerTick, liq.upperTick)
@@ -946,6 +958,7 @@ contract UniswapV3PoolTest is Test, UniswapV3PoolUtils {
         );
 
         (uint128 amountCollected0, uint128 amountCollected1) = pool.collect(
+            address(this),
             address(this),
             liq.lowerTick,
             liq.upperTick,
@@ -1004,7 +1017,7 @@ contract UniswapV3PoolTest is Test, UniswapV3PoolUtils {
             encodeExtra(weth, usdc, address(this))
         );
 
-        pool.burn(liq.lowerTick, liq.upperTick, liq.amount / 2);
+        pool.burn(address(this), liq.lowerTick, liq.upperTick, liq.amount / 2);
 
         bytes32 positionKey = keccak256(
             abi.encodePacked(address(this), liq.lowerTick, liq.upperTick)
@@ -1040,6 +1053,7 @@ contract UniswapV3PoolTest is Test, UniswapV3PoolUtils {
 
         uint128[] memory collectedAmounts = new uint128[](2);
         (collectedAmounts[0], collectedAmounts[1]) = pool.collect(
+            address(this),
             address(this),
             liq.lowerTick,
             liq.upperTick,
@@ -1098,7 +1112,14 @@ contract UniswapV3PoolTest is Test, UniswapV3PoolUtils {
     }
 
     function testMintInvalidTickRangeLower() public {
-        pool = deployPool(UniswapV3Factory(factory), weth, usdc, 3000, 1);
+        pool = deployPool(
+            StratoSwapFactory(factory),
+            weth,
+            usdc,
+            3000,
+            1,
+            donate
+        );
 
         // vm.expectRevert(encodeError("InvalidTickRange()"));
         try pool.mint(address(this), -887273, 0, 0, "") {
@@ -1113,7 +1134,14 @@ contract UniswapV3PoolTest is Test, UniswapV3PoolUtils {
     }
 
     function testMintInvalidTickRangeUpper() public {
-        pool = deployPool(UniswapV3Factory(factory), weth, usdc, 3000, 1);
+        pool = deployPool(
+            StratoSwapFactory(factory),
+            weth,
+            usdc,
+            3000,
+            1,
+            donate
+        );
 
         // vm.expectRevert(encodeError("InvalidTickRange()"));
         try pool.mint(address(this), 0, 887273, 0, "") {
@@ -1128,7 +1156,14 @@ contract UniswapV3PoolTest is Test, UniswapV3PoolUtils {
     }
 
     function testMintZeroLiquidity() public {
-        pool = deployPool(UniswapV3Factory(factory), weth, usdc, 3000, 1);
+        pool = deployPool(
+            StratoSwapFactory(factory),
+            weth,
+            usdc,
+            3000,
+            1,
+            donate
+        );
 
         // vm.expectRevert(encodeError("ZeroLiquidity()"));
         try pool.mint(address(this), 0, 1, 0, "") {
@@ -1289,11 +1324,12 @@ contract UniswapV3PoolTest is Test, UniswapV3PoolUtils {
         // revert TempError(weth, usdc);
 
         pool = deployPool(
-            UniswapV3Factory(factory),
+            StratoSwapFactory(factory),
             weth,
             usdc,
             3000,
-            params.currentPrice
+            params.currentPrice,
+            donate
         );
 
         if (params.mintLiqudity) {

@@ -1,8 +1,48 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-pragma solidity ^0.8.14;
+pragma solidity ^0.8.17;
 
 interface IUniswapV3Manager {
+    struct PoolBasicInfo {
+        address pool;
+        address tokenA;
+        address tokenB;
+        uint24 fee;
+    }
+
     struct GetPositionParams {
+        address tokenA;
+        address tokenB;
+        uint24 fee;
+        address owner;
+        int24 lowerTick;
+        int24 upperTick;
+    }
+
+    struct GetAccumulatedFeeParams {
+        address liquidityProvider;
+        address tokenA;
+        address tokenB;
+        uint24 fee;
+        address owner;
+        int24 lowerTick;
+        int24 upperTick;
+    }
+
+    struct GetOwnerAccumulatedFeeParams {
+        address tokenA;
+        address tokenB;
+        uint24 fee;
+    }
+
+    struct CreatePoolParams {
+        address tokenA;
+        address tokenB;
+        uint24 fee;
+        uint256 currentPrice;
+        address tokenDonate;
+    }
+
+    struct GetLiquidityparams {
         address tokenA;
         address tokenB;
         uint24 fee;
@@ -28,7 +68,6 @@ interface IUniswapV3Manager {
         address tokenOut;
         uint24 fee;
         uint256 amountIn;
-        uint160 sqrtPriceLimitX96;
     }
 
     struct SwapParams {
@@ -41,5 +80,38 @@ interface IUniswapV3Manager {
     struct SwapCallbackData {
         bytes path;
         address payer;
+    }
+
+    struct BurnParams {
+        address tokenA;
+        address tokenB;
+        uint24 fee;
+        int24 lowerTick;
+        int24 upperTick;
+        uint128 liquidity;
+    }
+
+    struct CollectParams {
+        address tokenA;
+        address tokenB;
+        uint24 fee;
+        address recipient;
+        int24 lowerTick;
+        int24 upperTick;
+        uint128 amount0Desired;
+        uint128 amount1Desired;
+    }
+
+    struct CollectOwnerParams {
+        address tokenA;
+        address tokenB;
+        uint24 fee;
+        address recipient;
+    }
+
+    struct GetTotalVolumeOfPool {
+        address tokenA;
+        address tokenB;
+        uint24 fee;
     }
 }

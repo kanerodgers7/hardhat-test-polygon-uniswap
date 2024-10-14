@@ -6,8 +6,8 @@ import "./ERC20Mintable.sol";
 import "./TestUtils.sol";
 
 import "../interfaces/IUniswapV3Pool.sol";
-import "../UniswapV3Factory.sol";
-import "../UniswapV3Pool.sol";
+import "../StratoSwapFactory.sol";
+import "../StratoSwapPool.sol";
 
 contract UniswapV3FactoryTest is Test, TestUtils {
     function testCreatePool(
@@ -15,7 +15,7 @@ contract UniswapV3FactoryTest is Test, TestUtils {
         address weth,
         address usdc
     ) public {
-        address poolAddress = UniswapV3Factory(factory).createPool(
+        address poolAddress = StratoSwapFactory(factory).createPool(
             weth,
             usdc,
             500
@@ -23,12 +23,12 @@ contract UniswapV3FactoryTest is Test, TestUtils {
 
         IUniswapV3Pool pool = IUniswapV3Pool(poolAddress);
 
-        if (UniswapV3Factory(factory).pools(usdc, weth, 500) != poolAddress) {
+        if (StratoSwapFactory(factory).pools(usdc, weth, 500) != poolAddress) {
             setFailedStatus(true, "invalid pool address in the registry");
             return;
         }
 
-        if (UniswapV3Factory(factory).pools(weth, usdc, 500) != poolAddress) {
+        if (StratoSwapFactory(factory).pools(weth, usdc, 500) != poolAddress) {
             setFailedStatus(
                 true,
                 "invalid pool address in the registry (reverse order)"
@@ -73,7 +73,7 @@ contract UniswapV3FactoryTest is Test, TestUtils {
         address weth,
         address usdc
     ) public {
-        try UniswapV3Factory(factory).createPool(weth, usdc, 300) {
+        try StratoSwapFactory(factory).createPool(weth, usdc, 300) {
             // Handle successful pool creation
             setFailedStatus(true, "Unexpected error");
         } catch Error(string memory) {
@@ -88,7 +88,7 @@ contract UniswapV3FactoryTest is Test, TestUtils {
         address factory,
         address weth
     ) public {
-        try UniswapV3Factory(factory).createPool(weth, weth, 500) {
+        try StratoSwapFactory(factory).createPool(weth, weth, 500) {
             // Handle successful pool creation
             setFailedStatus(true, "Unexpected error");
         } catch Error(string memory) {
@@ -100,7 +100,7 @@ contract UniswapV3FactoryTest is Test, TestUtils {
     }
 
     function testCreateZeroTokenAddress(address factory, address weth) public {
-        try UniswapV3Factory(factory).createPool(weth, address(0), 500) {
+        try StratoSwapFactory(factory).createPool(weth, address(0), 500) {
             // Handle successful pool creation
             setFailedStatus(true, "Unexpected error");
         } catch Error(string memory) {
@@ -116,9 +116,9 @@ contract UniswapV3FactoryTest is Test, TestUtils {
         address weth,
         address usdc
     ) public {
-        UniswapV3Factory(factory).createPool(weth, usdc, 500);
+        StratoSwapFactory(factory).createPool(weth, usdc, 500);
 
-        try UniswapV3Factory(factory).createPool(weth, usdc, 500) {
+        try StratoSwapFactory(factory).createPool(weth, usdc, 500) {
             // Handle successful pool creation
             setFailedStatus(true, "Unexpected error");
         } catch Error(string memory) {

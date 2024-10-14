@@ -8,22 +8,29 @@ import "./UniswapV3PoolUtilsTest.sol";
 import "../interfaces/IUniswapV3Pool.sol";
 import "../lib/LiquidityMath.sol";
 import "../lib/TickMath.sol";
-import "../UniswapV3Factory.sol";
-import "../UniswapV3Pool.sol";
+import "../StratoSwapFactory.sol";
+import "../StratoSwapPool.sol";
 
 contract UniswapV3PoolSwapsTest is Test, UniswapV3PoolUtils {
     address weth;
     address usdc;
+    address donate;
     address factory;
-    UniswapV3Pool pool;
+    StratoSwapPool pool;
 
     bool transferInMintCallback = true;
     bool transferInSwapCallback = true;
     bytes extra;
 
-    function setUp(address _weth, address _usdc, address _factory) public {
+    function setUp(
+        address _weth,
+        address _usdc,
+        address _donate,
+        address _factory
+    ) public {
         weth = _weth; //new ERC20Mintable("Ether", "ETH", 18);
         usdc = _usdc; //new ERC20Mintable("USDC", "USDC", 18);
+        donate = _donate;
         factory = _factory; //new UniswapV3Factory();
 
         extra = encodeExtra(weth, usdc, address(this));
@@ -1616,11 +1623,12 @@ contract UniswapV3PoolSwapsTest is Test, UniswapV3PoolUtils {
         ERC20Mintable(usdc).mint(address(this), params.balances[1]);
 
         pool = deployPool(
-            UniswapV3Factory(factory),
+            StratoSwapFactory(factory),
             weth,
             usdc,
             3000,
-            params.currentPrice
+            params.currentPrice,
+            donate
         );
 
         if (params.mintLiqudity) {

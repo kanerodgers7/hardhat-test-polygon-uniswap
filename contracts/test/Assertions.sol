@@ -3,17 +3,33 @@ pragma solidity ^0.8.14;
 
 import "forge-std/Test.sol";
 
-import "../UniswapV3Pool.sol";
+import "../StratoSwapPool.sol";
 
 import "./ERC20Mintable.sol";
 
 abstract contract Assertions is Test {
     struct ExpectedPoolState {
-        UniswapV3Pool pool;
+        StratoSwapPool pool;
         uint128 liquidity;
         uint160 sqrtPriceX96;
         int24 tick;
         uint256[2] fees;
+    }
+
+    bool public status = false;
+    bytes public message = "";
+
+    function getFailedStatus() public view returns (bool) {
+        return status;
+    }
+
+    function getErrorMessage() public view returns (bytes memory) {
+        return message;
+    }
+
+    function setFailedStatus(bool status_, bytes memory message_) public {
+        status = status_;
+        message = message_;
     }
 
     function assertPoolState(ExpectedPoolState memory expected) internal {
@@ -59,7 +75,7 @@ abstract contract Assertions is Test {
     }
 
     struct ExpectedBalances {
-        UniswapV3Pool pool;
+        StratoSwapPool pool;
         ERC20Mintable[2] tokens;
         uint256 userBalance0;
         uint256 userBalance1;
@@ -67,41 +83,20 @@ abstract contract Assertions is Test {
         uint256 poolBalance1;
     }
 
-    error MintabError(uint256 userBalance0, uint256 userBalance1);
-
     function assertBalances(ExpectedBalances memory expected) internal {
-        // assertEq(
-        //     expected.tokens[0].balanceOf(address(this)),
-        //     expected.userBalance0,
-        //     "incorrect token0 balance of user"
-        // );
         if (
             expected.tokens[0].balanceOf(address(this)) != expected.userBalance0
         ) {
             setFailedStatus(true, "incorrect token0 balance of user");
-            revert MintabError(
-                expected.tokens[0].balanceOf(address(this)),
-                expected.userBalance0
-            );
-            // return;
+            return;
         }
-        // assertEq(
-        //     expected.tokens[1].balanceOf(address(this)),
-        //     expected.userBalance1,
-        //     "incorrect token1 balance of user"
-        // );
+
         if (
             expected.tokens[1].balanceOf(address(this)) != expected.userBalance1
         ) {
             setFailedStatus(true, "incorrect token1 balance of user");
-            return;
         }
 
-        // assertEq(
-        //     expected.tokens[0].balanceOf(address(expected.pool)),
-        //     expected.poolBalance0,
-        //     "incorrect token0 balance of pool"
-        // );
         if (
             expected.tokens[0].balanceOf(address(expected.pool)) !=
             expected.poolBalance0
@@ -109,11 +104,7 @@ abstract contract Assertions is Test {
             setFailedStatus(true, "incorrect token0 balance of pool");
             return;
         }
-        // assertEq(
-        //     expected.tokens[1].balanceOf(address(expected.pool)),
-        //     expected.poolBalance1,
-        //     "incorrect token1 balance of pool"
-        // );
+
         if (
             expected.tokens[1].balanceOf(address(expected.pool)) !=
             expected.poolBalance1
@@ -124,7 +115,7 @@ abstract contract Assertions is Test {
     }
 
     struct ExpectedTick {
-        UniswapV3Pool pool;
+        StratoSwapPool pool;
         int24 tick;
         bool initialized;
         uint128 liquidityGross;
@@ -146,83 +137,25 @@ abstract contract Assertions is Test {
             ,
 
         ) = expected.pool.ticks(expected.tick);
-        // assertEq(
-        //     initialized,
-        //     expected.initialized,
-        //     "incorrect tick initialized state"
-        // );
+
         if (initialized != expected.initialized) {
             setFailedStatus(true, "incorrect tick initialized state");
             return;
         }
-        // assertEq(
-        //     liquidityGross,
-        //     expected.liquidityGross,
-        //     "incorrect tick gross liquidity"
-        // );
+
         if (liquidityGross != expected.liquidityGross) {
             setFailedStatus(true, "incorrect tick gross state");
             return;
         }
-        // assertEq(
-        //     liquidityNet,
-        //     expected.liquidityNet,
-        //     "incorrect tick net liquidity"
-        // );
+
         if (liquidityNet != expected.liquidityNet) {
             setFailedStatus(true, "incorrect tick net state");
             return;
         }
-
-        // TODO: fix, must be the same as 'initialized'
-        // assertEq(
-        //     tickInBitMap(expected.pool, expected.tick),
-        //     expected.initialized,
-        //     "incorrect tick in bitmap state"
-        // );
     }
 
-    // struct ExpectedObservation {
-    //     UniswapV3Pool pool;
-    //     uint16 index;
-    //     uint32 timestamp;
-    //     int56 tickCumulative;
-    //     bool initialized;
-    // }
-
-    // struct ExpectedObservationShort {
-    //     uint16 index;
-    //     uint32 timestamp;
-    //     int56 tickCumulative;
-    //     bool initialized;
-    // }
-
-    // function assertObservation(ExpectedObservation memory expected) internal {
-    //     (uint32 timestamp, int56 tickCumulative, bool initialized) = expected
-    //         .pool
-    //         .observations(expected.index);
-
-    //     assertEq(
-    //         timestamp,
-    //         expected.timestamp,
-    //         "incorrect observation timestamp"
-    //     );
-
-    //     assertEq(
-    //         tickCumulative,
-    //         expected.tickCumulative,
-    //         "incorrect observation cumulative tick"
-    //     );
-
-    //     assertEq(
-    //         initialized,
-    //         expected.initialized,
-    //         "incorrect observation initialization state"
-    //     );
-    // }
-
     struct ExpectedMany {
-        UniswapV3Pool pool;
+        StratoSwapPool pool;
         ERC20Mintable[2] tokens;
         // Pool
         uint128 liquidity;
@@ -290,20 +223,10 @@ abstract contract Assertions is Test {
                 liquidityNet: expected.ticks[1].liquidityNet
             })
         );
-
-        // assertObservation(
-        //     ExpectedObservation({
-        //         pool: expected.pool,
-        //         index: expected.observation.index,
-        //         timestamp: expected.observation.timestamp,
-        //         tickCumulative: expected.observation.tickCumulative,
-        //         initialized: expected.observation.initialized
-        //     })
-        // );
     }
 
     struct ExpectedPoolAndBalances {
-        UniswapV3Pool pool;
+        StratoSwapPool pool;
         ERC20Mintable[2] tokens;
         // Pool
         uint128 liquidity;
@@ -338,7 +261,7 @@ abstract contract Assertions is Test {
     }
 
     struct ExpectedPositionAndTicks {
-        UniswapV3Pool pool;
+        StratoSwapPool pool;
         // Position
         ExpectedPositionShort position;
         // Ticks
@@ -379,7 +302,7 @@ abstract contract Assertions is Test {
     }
 
     struct ExpectedPosition {
-        UniswapV3Pool pool;
+        StratoSwapPool pool;
         address owner;
         int24[2] ticks;
         uint128 liquidity;
@@ -407,63 +330,34 @@ abstract contract Assertions is Test {
             uint128 tokensOwed1
         ) = params.pool.positions(positionKey);
 
-        // assertEq(liquidity, params.liquidity, "incorrect position liquidity");
         if (liquidity != params.liquidity) {
             setFailedStatus(true, "incorrect position liquidity");
             return;
         }
-        // assertEq(
-        //     feeGrowthInside0LastX128,
-        //     params.feeGrowth[0],
-        //     "incorrect position fee growth for token0"
-        // );
+
         if (feeGrowthInside0LastX128 != params.feeGrowth[0]) {
             setFailedStatus(true, "incorrect position fee growth for token0");
             return;
         }
-        // assertEq(
-        //     feeGrowthInside1LastX128,
-        //     params.feeGrowth[1],
-        //     "incorrect position fee growth for token1"
-        // );
+
         if (feeGrowthInside1LastX128 != params.feeGrowth[1]) {
             setFailedStatus(true, "incorrect position fee growth for token1");
             return;
         }
-        // assertEq(
-        //     tokensOwed0,
-        //     params.tokensOwed[0],
-        //     "incorrect position tokens owed for token0"
-        // );
+
         if (tokensOwed0 != params.tokensOwed[0]) {
             setFailedStatus(true, "incorrect position tokens owed for token0");
             return;
         }
-        // assertEq(
-        //     tokensOwed1,
-        //     params.tokensOwed[1],
-        //     "incorrect position tokens owed for token1"
-        // );
+
         if (tokensOwed1 != params.tokensOwed[1]) {
             setFailedStatus(true, "incorrect position tokens owed for token1");
             return;
         }
     }
 
-    // function assertTokenURI(
-    //     string memory actual,
-    //     string memory expectedFixture,
-    //     string memory errMessage
-    // ) internal {
-    //     string memory expected = vm.readFile(
-    //         string.concat("./test/fixtures/", expectedFixture)
-    //     );
-
-    //     assertEq(actual, string(expected), errMessage);
-    // }
-
     function tickInBitMap(
-        UniswapV3Pool pool,
+        StratoSwapPool pool,
         int24 tick_
     ) internal view returns (bool initialized) {
         tick_ /= int24(pool.tickSpacing());

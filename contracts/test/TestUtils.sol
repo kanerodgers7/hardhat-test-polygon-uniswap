@@ -7,8 +7,9 @@ import "abdk-libraries-solidity/ABDKMath64x64.sol";
 import "../interfaces/IUniswapV3Pool.sol";
 import "../interfaces/IUniswapV3Manager.sol";
 import "../lib/FixedPoint96.sol";
-import "../UniswapV3Factory.sol";
-import "../UniswapV3Pool.sol";
+import "../StratoSwapManager.sol";
+import "../StratoSwapFactory.sol";
+import "../StratoSwapPool.sol";
 
 import "./ERC20Mintable.sol";
 import "./Assertions.sol";
@@ -60,15 +61,15 @@ abstract contract TestUtils is Test, Assertions {
             );
     }
 
-    // function sqrtPSmall(uint256 price) internal pure returns (uint160) {
-    //     return
-    //         uint160(
-    //             int160(
-    //                 ABDKMath64x64.sqrt(int128(int256((1 << 64) / price))) <<
-    //                     (FixedPoint96.RESOLUTION - 64)
-    //             )
-    //         );
-    // }
+    function sqrtPFromDecimal(uint256 price) internal pure returns (uint160) {
+        return
+            uint160(
+                int160(
+                    (ABDKMath64x64.sqrt(int128(int256(price))) / 1000000000) <<
+                        (FixedPoint96.RESOLUTION - 32)
+                )
+            );
+    }
 
     // Calculates sqrtP from price with tick spacing equal to 60;
     function sqrtP60(uint256 price) internal pure returns (uint160) {
@@ -177,16 +178,19 @@ abstract contract TestUtils is Test, Assertions {
         });
     }
 
+    error Mintab1Error(uint160);
+
     function deployPool(
-        UniswapV3Factory factory,
+        StratoSwapFactory factory,
         address token0,
         address token1,
         uint24 fee,
-        uint256 currentPrice
-    ) internal returns (UniswapV3Pool pool) {
-        pool = UniswapV3Pool(factory.createPool(token0, token1, fee));
+        uint256 currentPrice,
+        address tokenDonate
+    ) internal returns (StratoSwapPool pool) {
+        pool = StratoSwapPool(factory.createPool(token0, token1, fee));
         // if (token0 < token1)
-        pool.initialize(sqrtP(currentPrice));
+        pool.initialize(sqrtP(currentPrice), tokenDonate);
         // else pool.initialize(sqrtPSmall(currentPrice));
     }
 

@@ -3,15 +3,17 @@ require("dotenv").config();
 
 
 async function main() {
+  
   const [deployer] = await ethers.getSigners();
   console.log("Deploying contracts with the account:", deployer.address);
 
   const balance = await deployer.provider.getBalance(deployer.address);
   console.log("Account balance:", balance.toString());
   
-  const UniswapV3FactoryFact = await ethers.getContractFactory('UniswapV3Factory');
-  const UniswapV3QuoterFact = await ethers.getContractFactory('UniswapV3Quoter');
-  const UniswapV3ManagerFact = await ethers.getContractFactory('UniswapV3Manager');
+  const UniswapV3FactoryFact = await ethers.getContractFactory('StratoSwapFactory');
+  const UniswapV3QuoterFact = await ethers.getContractFactory('StratoSwapQuoter');
+  const UniswapV3ManagerFact = await ethers.getContractFactory('StratoSwapManager');
+  const UniswapV3ManagerHelperFact = await ethers.getContractFactory('StratoSwapManagerHelper');
 
   const uniswapV3Factory = await UniswapV3FactoryFact.deploy();
   await uniswapV3Factory.waitForDeployment();
@@ -27,6 +29,11 @@ async function main() {
   await uniswapV3Manager.waitForDeployment();
 
   console.log("UniswapV3ManagerFact deployed to:", uniswapV3Manager.target);
+
+  const uniswapV3ManagerHelper = await UniswapV3ManagerHelperFact.deploy(uniswapV3Factory.target);
+  await uniswapV3ManagerHelper.waitForDeployment();
+
+  console.log("UniswapV3ManagerHelperFact deployed to:", uniswapV3ManagerHelper.target);
   
   console.log('All done');
 }

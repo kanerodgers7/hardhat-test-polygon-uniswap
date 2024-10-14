@@ -8,33 +8,37 @@ describe("UniswapV3ManagerTest", async () => {
     let weth: any;
     let usdc: any;
     let uni: any;
+    let pst: any;
+    let donate: any;
     let factory: any;
-    let manager: any;
     let testManager: any;
+    let deployer: any;
     
     beforeEach(async function () {
+        [deployer] = await ethers.getSigners();
         const factoryERC20 = await ethers.getContractFactory("ERC20Mintable");
+        const factoryPST = await ethers.getContractFactory("PSToken");
         do {
             weth = await factoryERC20.deploy("USDC", "USDC", 18) as any;
             usdc = await factoryERC20.deploy("Ether", "ETH", 18) as any;
+            pst = await factoryPST.deploy("PST Token", "PST", deployer, 18) as any;
             uni = await factoryERC20.deploy("Uniswap Coin", "UNI", 18) as any;
-        } while(weth.target.toUpperCase() > usdc.target.toUpperCase() || usdc.target.toUpperCase() > uni.target.toUpperCase());
+            donate = await factoryERC20.deploy("Donate Token", "DNT", 18) as any;
+        } while(weth.target.toUpperCase() > usdc.target.toUpperCase() || usdc.target.toUpperCase() > pst.target.toUpperCase() || pst.target.toUpperCase() > uni.target.toUpperCase() );
 
-        const factoryFactory = await ethers.getContractFactory("UniswapV3Factory");
+
+        const factoryFactory = await ethers.getContractFactory("StratoSwapFactory");
         factory = await factoryFactory.deploy();
 
         // const factoryPool = await ethers.getContractFactory("UniswapV3Pool");
         // pool = await factoryPool.deploy();
 
-        const factoryManager = await ethers.getContractFactory("UniswapV3Manager");
-        manager = await factoryManager.deploy(factory.target);
-        
         const factoryTestManager = await ethers.getContractFactory("UniswapV3ManagerTest");
         testManager = await factoryTestManager.deploy();
 
-        await testManager.setUp(weth, usdc, uni, factory, manager);
+        await testManager.setUp(weth, usdc, uni, pst, donate, factory);
         
-        return {weth, usdc, uni, factory, manager, testManager};
+        return {deployer, weth, usdc, uni, pst, donate, factory, testManager};
     });
 
     it('Test mint range', async () => {
@@ -97,7 +101,7 @@ describe("UniswapV3ManagerTest", async () => {
         await testManager.testMintZeroLiquidity();
         const failed = await testManager.getFailedStatus();
         const message = await testManager.getErrorMessage();
-        if(failed === true) console.log(message);
+        if(failed === true) console.log("error", message);
         expect(failed).to.equal(false)
     })
 
@@ -117,32 +121,8 @@ describe("UniswapV3ManagerTest", async () => {
         expect(failed).to.equal(false)
     })
 
-    it('Test swap buy eth', async () => {
-        await testManager.testSwapBuyEth();
-        const failed = await testManager.getFailedStatus();
-        const message = await testManager.getErrorMessage();
-        if(failed === true) console.log(message);
-        expect(failed).to.equal(false)
-    })
-
-    it('Test swap buy usdc', async () => {
-        await testManager.testSwapBuyUSDC();
-        const failed = await testManager.getFailedStatus();
-        const message = await testManager.getErrorMessage();
-        if(failed === true) console.log(message);
-        expect(failed).to.equal(false)
-    })
-
     it('Test swap buy multi pool', async () => {
         await testManager.testSwapBuyMultipool();
-        const failed = await testManager.getFailedStatus();
-        const message = await testManager.getErrorMessage();
-        if(failed === true) console.log(message);
-        expect(failed).to.equal(false)
-    })
-
-    it('Test swap mixed', async () => {
-        await testManager.testSwapMixed();
         const failed = await testManager.getFailedStatus();
         const message = await testManager.getErrorMessage();
         if(failed === true) console.log(message);
@@ -165,19 +145,74 @@ describe("UniswapV3ManagerTest", async () => {
         expect(failed).to.equal(false)
     })
 
-    it('Test swap insucfficient input amount', async () => {
-        await testManager.testSwapInsufficientInputAmount();
+    // PST Relation
+    it('Test mint range below with pst', async () => {
+        await testManager.testMintRangeBelowWithPST();
         const failed = await testManager.getFailedStatus();
         const message = await testManager.getErrorMessage();
         if(failed === true) console.log(message);
         expect(failed).to.equal(false)
     })
 
-    it('Test get position', async () => {
-        await testManager.testGetPosition();
+    it('Test mint range above with pst', async () => {
+        await testManager.testMintRangeAboveWithPST();
         const failed = await testManager.getFailedStatus();
         const message = await testManager.getErrorMessage();
         if(failed === true) console.log(message);
         expect(failed).to.equal(false)
     })
+
+    it('Test mint invalid tick range lower with pst', async () => {
+        await testManager.testMintInvalidTickRangeLowerWithPST();
+        const failed = await testManager.getFailedStatus();
+        const message = await testManager.getErrorMessage();
+        if(failed === true) console.log(message);
+        expect(failed).to.equal(false)
+    })
+
+    it('Test mint invalid tick range upper with pst', async () => {
+        await testManager.testMintInvalidTickRangeUpperWithPST();
+        const failed = await testManager.getFailedStatus();
+        const message = await testManager.getErrorMessage();
+        if(failed === true) console.log(message);
+        expect(failed).to.equal(false)
+    })
+    it('Test Burn', async () => {
+        await testManager.testBurn();
+        const failed = await testManager.getFailedStatus();
+        const message = await testManager.getErrorMessage();
+        if(failed === true) console.log(message);
+        expect(failed).to.equal(false)
+    })
+    it('Test Single Swap and Collect Fee', async () => {
+        await testManager.testSingleSwapAndCollectFee();
+        const failed = await testManager.getFailedStatus();
+        const message = await testManager.getErrorMessage();
+        if(failed === true) console.log(message);
+        expect(failed).to.equal(false)
+    })
+    it('Test Multi Swap and Collect Fee', async () => {
+        await testManager.testMultiSwapAndCollectFee();
+        const failed = await testManager.getFailedStatus();
+        const message = await testManager.getErrorMessage();
+        if(failed === true) console.log(message);
+        expect(failed).to.equal(false)
+    })
+
+    it('Test donate', async () => {
+        await testManager.testDonate();
+        const failed = await testManager.getFailedStatus();
+        const message = await testManager.getErrorMessage();
+        if(failed === true) console.log(message);
+        expect(failed).to.equal(false)
+    })
+
+    it('Test Project', async () => {
+        await testManager.testProject();
+        const failed = await testManager.getFailedStatus();
+        const message = await testManager.getErrorMessage();
+        if(failed === true) console.log(message);
+        expect(failed).to.equal(false)
+    })
+
 });

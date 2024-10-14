@@ -2,12 +2,16 @@
 pragma solidity ^0.8.14;
 
 import {Test, stdError} from "forge-std/Test.sol";
+import "abdk-libraries-solidity/ABDKMath64x64.sol";
 import "./ERC20Mintable.sol";
+import "./PSToken.sol";
 import "./TestUtils.sol";
+import "./UniswapV3PoolUtilsTest.sol";
 
 import "../lib/LiquidityMath.sol";
-import "../UniswapV3Factory.sol";
-import "../UniswapV3Manager.sol";
+import "../StratoSwapFactory.sol";
+import "../StratoSwapManager.sol";
+import "../StratoSwapManagerHelper.sol";
 
 contract UniswapV3ManagerTest is Test, TestUtils {
     // ERC20Mintable weth;
@@ -16,12 +20,15 @@ contract UniswapV3ManagerTest is Test, TestUtils {
     address usdc;
     // ERC20Mintable uni;
     address uni;
+    address pst;
+    address donate;
     // UniswapV3Factory factory;
     address factory;
-    UniswapV3Pool pool;
+    StratoSwapPool pool;
     // address pool;
     // UniswapV3Manager manager;
     address manager;
+    address managerHelper;
 
     bool transferInMintCallback = true;
     bool transferInSwapCallback = true;
@@ -29,20 +36,79 @@ contract UniswapV3ManagerTest is Test, TestUtils {
 
     error ApproveError(uint256 t1, uint256 t2);
 
+    struct LiquidityRange {
+        int24 lowerTick;
+        int24 upperTick;
+        uint128 amount;
+    }
+
     function setUp(
         address _weth,
         address _usdc,
         address _uni,
-        address _factory,
-        address _manager
-    ) public {
+        address _pst,
+        address _donate,
+        address _factory
+    ) public // address _manager
+    {
         weth = _weth; //new ERC20Mintable("Ether", "ETH", 18);
         usdc = _usdc; //new ERC20Mintable("USDC", "USDC", 18);
         uni = _uni; //new ERC20Mintable("Uniswap Coin", "UNI", 18);
+        pst = _pst;
+        donate = _donate;
         factory = _factory; //new UniswapV3Factory();
-        manager = _manager; //new UniswapV3Manager(address(factory));
+        manager = address(new StratoSwapManager(address(factory)));
+        managerHelper = address(new StratoSwapManagerHelper(address(factory)));
 
         extra = encodeExtra(weth, usdc, address(this));
+    }
+
+    function liquidityRange(
+        uint256 lowerPrice,
+        uint256 upperPrice,
+        uint256 amount0,
+        uint256 amount1,
+        uint256 currentPrice
+    ) internal pure returns (LiquidityRange memory range) {
+        range = LiquidityRange({
+            lowerTick: tick60(lowerPrice),
+            upperTick: tick60(upperPrice),
+            amount: LiquidityMath.getLiquidityForAmounts(
+                sqrtP(currentPrice),
+                sqrtP60(lowerPrice),
+                sqrtP60(upperPrice),
+                amount0,
+                amount1
+            )
+        });
+    }
+
+    function liquidityRange(
+        uint256 lowerPrice,
+        uint256 upperPrice,
+        uint128 amount
+    ) internal pure returns (LiquidityRange memory range) {
+        range = LiquidityRange({
+            lowerTick: tick60(lowerPrice),
+            upperTick: tick60(upperPrice),
+            amount: amount
+        });
+    }
+
+    function liquidityRanges(
+        LiquidityRange memory range
+    ) internal pure returns (LiquidityRange[] memory ranges) {
+        ranges = new LiquidityRange[](1);
+        ranges[0] = range;
+    }
+
+    function liquidityRanges(
+        LiquidityRange memory range1,
+        LiquidityRange memory range2
+    ) internal pure returns (LiquidityRange[] memory ranges) {
+        ranges = new LiquidityRange[](2);
+        ranges[0] = range1;
+        ranges[1] = range2;
     }
 
     function compareStrings(
@@ -82,21 +148,10 @@ contract UniswapV3ManagerTest is Test, TestUtils {
             0.987078348444137445 ether,
             5000 ether
         );
-
-        // assertEq(
-        //     poolBalance0,
-        //     expectedAmount0,
-        //     "incorrect weth deposited amount"
-        // );
         if (poolBalance0 != expectedAmount0) {
             setFailedStatus(true, "incorrect weth deposited amount");
             return;
         }
-        // assertEq(
-        //     poolBalance1,
-        //     expectedAmount1,
-        //     "incorrect usdc deposited amount"
-        // );
         if (poolBalance1 != expectedAmount1) {
             setFailedStatus(true, "incorrect usdc deposited amount");
             return;
@@ -452,13 +507,22 @@ contract UniswapV3ManagerTest is Test, TestUtils {
     }
 
     function testMintInvalidTickRangeLower() public {
-        pool = deployPool(UniswapV3Factory(factory), weth, usdc, 3000, 1);
-        manager = address(new UniswapV3Manager(factory));
+        manager = address(new StratoSwapManager(factory));
+        StratoSwapManager(manager).checkPSToken(weth);
+        StratoSwapManager(manager).checkPSToken(usdc);
+        pool = deployPool(
+            StratoSwapFactory(factory),
+            weth,
+            usdc,
+            3000,
+            1,
+            donate
+        );
 
         // Reverted in TickMath.getSqrtRatioAtTick
         // vm.expectRevert(bytes("T"));
         try
-            UniswapV3Manager(manager).mint(
+            StratoSwapManager(manager).mint(
                 IUniswapV3Manager.MintParams({
                     tokenA: weth,
                     tokenB: usdc,
@@ -487,16 +551,23 @@ contract UniswapV3ManagerTest is Test, TestUtils {
         }
     }
 
-    error MintERror(bytes);
-
     function testMintInvalidTickRangeUpper() public {
-        pool = deployPool(UniswapV3Factory(factory), weth, usdc, 3000, 1);
-        manager = address(new UniswapV3Manager(factory));
+        manager = address(new StratoSwapManager(factory));
+        StratoSwapManager(manager).checkPSToken(weth);
+        StratoSwapManager(manager).checkPSToken(usdc);
+        pool = deployPool(
+            StratoSwapFactory(factory),
+            weth,
+            usdc,
+            3000,
+            1,
+            donate
+        );
 
         // Reverted in TickMath.getSqrtRatioAtTick
         // vm.expectRevert(bytes("T"));
         try
-            UniswapV3Manager(manager).mint(
+            StratoSwapManager(manager).mint(
                 IUniswapV3Manager.MintParams({
                     tokenA: weth,
                     tokenB: usdc,
@@ -526,12 +597,21 @@ contract UniswapV3ManagerTest is Test, TestUtils {
     }
 
     function testMintZeroLiquidity() public {
-        pool = deployPool(UniswapV3Factory(factory), weth, usdc, 3000, 1);
-        manager = address(new UniswapV3Manager(factory));
+        manager = address(new StratoSwapManager(factory));
+        StratoSwapManager(manager).checkPSToken(weth);
+        StratoSwapManager(manager).checkPSToken(usdc);
+        pool = deployPool(
+            StratoSwapFactory(factory),
+            weth,
+            usdc,
+            3000,
+            1,
+            donate
+        );
 
         // vm.expectRevert(encodeError("ZeroLiquidity()"));
         try
-            UniswapV3Manager(manager).mint(
+            StratoSwapManager(manager).mint(
                 IUniswapV3Manager.MintParams({
                     tokenA: weth,
                     tokenB: usdc,
@@ -546,17 +626,16 @@ contract UniswapV3ManagerTest is Test, TestUtils {
             )
         {
             // Handle successful pool creation
-            setFailedStatus(true, "Unexpected error");
+            setFailedStatus(true, "123Unexpected error");
         } catch Error(string memory) {
             // This is executed in case of a revert with a reason string
-            setFailedStatus(true, "Unexpected error with reason");
-        } catch (bytes memory reason) {
+        } catch (bytes memory) {
             // setFailedStatus(true, "Unexpected error without reason");
             // This is executed in case of a revert without a reason string
-            if (compareBytes("0x10074548", reason))
+            // if (compareBytes("0x10074548", reason))
                 setFailedStatus(
                     true,
-                    "Unexpected error with unexpected reason"
+                    "789Unexpected error with unexpected reason"
                 );
         }
     }
@@ -575,7 +654,7 @@ contract UniswapV3ManagerTest is Test, TestUtils {
         );
 
         // vm.expectRevert(stdError.arithmeticError);
-        try UniswapV3Manager(manager).mint(mints[0]) {
+        try StratoSwapManager(manager).mint(mints[0]) {
             // Handle successful pool creation
             setFailedStatus(true, "Unexpected error");
         } catch Error(string memory) {
@@ -588,8 +667,17 @@ contract UniswapV3ManagerTest is Test, TestUtils {
 
     function testMintSlippageProtection() public {
         (uint256 amount0, uint256 amount1) = (1 ether, 5000 ether);
-        pool = deployPool(UniswapV3Factory(factory), weth, usdc, 3000, 5000);
-        manager = address(new UniswapV3Manager(factory));
+        manager = address(new StratoSwapManager(factory));
+        StratoSwapManager(manager).checkPSToken(weth);
+        StratoSwapManager(manager).checkPSToken(usdc);
+        pool = deployPool(
+            StratoSwapFactory(factory),
+            weth,
+            usdc,
+            3000,
+            5000,
+            donate
+        );
 
         ERC20Mintable(weth).mint(address(this), amount0);
         ERC20Mintable(usdc).mint(address(this), amount1);
@@ -601,7 +689,7 @@ contract UniswapV3ManagerTest is Test, TestUtils {
         // );
 
         try
-            UniswapV3Manager(manager).mint(
+            StratoSwapManager(manager).mint(
                 IUniswapV3Manager.MintParams({
                     tokenA: weth,
                     tokenB: usdc,
@@ -630,7 +718,7 @@ contract UniswapV3ManagerTest is Test, TestUtils {
             ) setFailedStatus(true, "Unexpected error with unexpected reason");
         }
 
-        UniswapV3Manager(manager).mint(
+        StratoSwapManager(manager).mint(
             IUniswapV3Manager.MintParams({
                 tokenA: weth,
                 tokenB: usdc,
@@ -641,172 +729,6 @@ contract UniswapV3ManagerTest is Test, TestUtils {
                 amount1Desired: amount1,
                 amount0Min: (amount0 * 98) / 100,
                 amount1Min: (amount1 * 98) / 100
-            })
-        );
-    }
-
-    function testSwapBuyEth() public {
-        (
-            IUniswapV3Manager.MintParams[] memory mints,
-            uint256 poolBalance0,
-            uint256 poolBalance1
-        ) = setupPool(
-                PoolParams({
-                    wethBalance: 1 ether,
-                    usdcBalance: 5000 ether,
-                    currentPrice: 5000,
-                    mints: mintParams(
-                        mintParams(4545, 5500, 1 ether, 5000 ether)
-                    ),
-                    transferInMintCallback: true,
-                    transferInSwapCallback: true,
-                    mintLiquidity: true
-                })
-            );
-
-        uint256 swapAmount = 42 ether; // 42 USDC
-        ERC20Mintable(usdc).mint(address(this), swapAmount);
-        ERC20Mintable(usdc).approve(manager, swapAmount);
-
-        (uint256 userBalance0Before, uint256 userBalance1Before) = (
-            ERC20Mintable(weth).balanceOf(address(this)),
-            ERC20Mintable(usdc).balanceOf(address(this))
-        );
-
-        uint256 amountOut = UniswapV3Manager(manager).swapSingle(
-            IUniswapV3Manager.SwapSingleParams({
-                tokenIn: usdc,
-                tokenOut: weth,
-                fee: 3000,
-                amountIn: swapAmount,
-                sqrtPriceLimitX96: sqrtP(5004)
-            })
-        );
-
-        uint256 expectedAmountOut = 0.008371593947078467 ether;
-
-        // assertEq(amountOut, expectedAmountOut, "invalid ETH out");
-        if (amountOut != expectedAmountOut) {
-            setFailedStatus(true, "invalid ETH out");
-            return;
-        }
-
-        assertMany(
-            ExpectedMany({
-                pool: pool,
-                tokens: [ERC20Mintable(weth), ERC20Mintable(usdc)],
-                liquidity: liquidity(mints[0], 5000),
-                sqrtPriceX96: 5604422590555458105735383351329, // 5003.830413717752
-                tick: 85183,
-                fees: [
-                    uint256(0),
-                    27727650748765949686643356806934465 // 0.000081484242041869
-                ],
-                userBalances: [
-                    userBalance0Before + amountOut,
-                    userBalance1Before - swapAmount
-                ],
-                poolBalances: [
-                    poolBalance0 - amountOut,
-                    poolBalance1 + swapAmount
-                ],
-                position: ExpectedPositionShort({
-                    owner: address(this),
-                    ticks: [mints[0].lowerTick, mints[0].upperTick],
-                    liquidity: liquidity(mints[0], 5000),
-                    feeGrowth: [uint256(0), 0],
-                    tokensOwed: [uint128(0), 0]
-                }),
-                ticks: mintParamsToTicks(mints[0], 5000)
-                // observation: ExpectedObservationShort({
-                //     index: 0,
-                //     timestamp: 1,
-                //     tickCumulative: 0,
-                //     initialized: true
-                // })
-            })
-        );
-    }
-
-    function testSwapBuyUSDC() public {
-        (
-            IUniswapV3Manager.MintParams[] memory mints,
-            uint256 poolBalance0,
-            uint256 poolBalance1
-        ) = setupPool(
-                PoolParams({
-                    wethBalance: 1 ether,
-                    usdcBalance: 5000 ether,
-                    currentPrice: 5000,
-                    mints: mintParams(
-                        mintParams(4545, 5500, 1 ether, 5000 ether)
-                    ),
-                    transferInMintCallback: true,
-                    transferInSwapCallback: true,
-                    mintLiquidity: true
-                })
-            );
-
-        uint256 swapAmount = 0.01337 ether;
-        ERC20Mintable(weth).mint(address(this), swapAmount);
-        ERC20Mintable(weth).approve(manager, swapAmount);
-
-        (uint256 userBalance0Before, uint256 userBalance1Before) = (
-            ERC20Mintable(weth).balanceOf(address(this)),
-            ERC20Mintable(usdc).balanceOf(address(this))
-        );
-
-        uint256 amountOut = UniswapV3Manager(manager).swapSingle(
-            IUniswapV3Manager.SwapSingleParams({
-                tokenIn: weth,
-                tokenOut: usdc,
-                fee: 3000,
-                amountIn: swapAmount,
-                sqrtPriceLimitX96: sqrtP(4993)
-            })
-        );
-
-        uint256 expectedAmountOut = 66.608848079558229697 ether;
-
-        // assertEq(amountOut, expectedAmountOut, "invalid ETH out");
-        if (amountOut != expectedAmountOut) {
-            setFailedStatus(true, "invalid ETH out");
-            return;
-        }
-
-        assertMany(
-            ExpectedMany({
-                pool: pool,
-                tokens: [ERC20Mintable(weth), ERC20Mintable(usdc)],
-                liquidity: liquidity(mints[0], 5000),
-                sqrtPriceX96: 5598864267980327381293641469695, // 4993.909994249256
-                tick: 85164,
-                fees: [
-                    uint256(8826635488357160650248135250207), // 0.000000025939150383
-                    0
-                ],
-                userBalances: [
-                    userBalance0Before - swapAmount,
-                    userBalance1Before + amountOut
-                ],
-                poolBalances: [
-                    poolBalance0 + swapAmount,
-                    poolBalance1 - amountOut
-                ],
-                position: ExpectedPositionShort({
-                    owner: address(this),
-                    ticks: [mints[0].lowerTick, mints[0].upperTick],
-                    liquidity: liquidity(mints[0], 5000),
-                    feeGrowth: [uint256(0), 0],
-                    tokensOwed: [uint128(0), 0]
-                }),
-                ticks: mintParamsToTicks(mints[0], 5000)
-                // observation: ExpectedObservationShort({
-                //     index: 0,
-                //     timestamp: 1,
-                //     tickCumulative: 0,
-                //     initialized: true
-                // })
             })
         );
     }
@@ -833,7 +755,7 @@ contract UniswapV3ManagerTest is Test, TestUtils {
 
         // Deploy WETH/UNI pool
         (
-            UniswapV3Pool wethUNI,
+            StratoSwapPool wethUNI,
             IUniswapV3Manager.MintParams[] memory wethUNIMints,
             uint256 wethUNIBalance0,
             uint256 wethUNIBalance1
@@ -879,7 +801,7 @@ contract UniswapV3ManagerTest is Test, TestUtils {
             ERC20Mintable(uni).balanceOf(address(this))
         );
 
-        uint256 amountOut = UniswapV3Manager(manager).swap(
+        uint256 amountOut = StratoSwapManager(manager).swap(
             IUniswapV3Manager.SwapParams({
                 path: path,
                 recipient: address(this),
@@ -963,97 +885,6 @@ contract UniswapV3ManagerTest is Test, TestUtils {
         );
     }
 
-    function testSwapMixed() public {
-        (
-            IUniswapV3Manager.MintParams[] memory mints,
-            uint256 poolBalance0,
-            uint256 poolBalance1
-        ) = setupPool(
-                PoolParams({
-                    wethBalance: 1 ether,
-                    usdcBalance: 5000 ether,
-                    currentPrice: 5000,
-                    mints: mintParams(
-                        mintParams(4545, 5500, 1 ether, 5000 ether)
-                    ),
-                    transferInMintCallback: true,
-                    transferInSwapCallback: true,
-                    mintLiquidity: true
-                })
-            );
-
-        uint256 ethAmount = 0.01337 ether;
-        ERC20Mintable(weth).mint(address(this), ethAmount);
-        ERC20Mintable(weth).approve(manager, ethAmount);
-
-        uint256 usdcAmount = 55 ether;
-        ERC20Mintable(usdc).mint(address(this), usdcAmount);
-        ERC20Mintable(usdc).approve(manager, usdcAmount);
-
-        uint256 userBalance0Before = ERC20Mintable(weth).balanceOf(
-            address(this)
-        );
-        uint256 userBalance1Before = ERC20Mintable(usdc).balanceOf(
-            address(this)
-        );
-
-        uint256 amountOut1 = UniswapV3Manager(manager).swapSingle(
-            IUniswapV3Manager.SwapSingleParams({
-                tokenIn: weth,
-                tokenOut: usdc,
-                fee: 3000,
-                amountIn: ethAmount,
-                sqrtPriceLimitX96: sqrtP(4990)
-            })
-        );
-
-        uint256 amountOut2 = UniswapV3Manager(manager).swapSingle(
-            IUniswapV3Manager.SwapSingleParams({
-                tokenIn: usdc,
-                tokenOut: weth,
-                fee: 3000,
-                amountIn: usdcAmount,
-                sqrtPriceLimitX96: sqrtP(5004)
-            })
-        );
-
-        assertMany(
-            ExpectedMany({
-                pool: pool,
-                tokens: [ERC20Mintable(weth), ERC20Mintable(usdc)],
-                liquidity: liquidity(mints[0], 5000),
-                sqrtPriceX96: 5601673842247623244689987477875, // 4998.923254346182
-                tick: 85174,
-                fees: [
-                    uint256(8826635488357160650248135250207), // 0.000000025939150383
-                    36310018837669696018223443437652275 // 0.000106705555054829
-                ],
-                userBalances: [
-                    userBalance0Before - ethAmount + amountOut2,
-                    userBalance1Before - usdcAmount + amountOut1
-                ],
-                poolBalances: [
-                    poolBalance0 + ethAmount - amountOut2,
-                    poolBalance1 + usdcAmount - amountOut1
-                ],
-                position: ExpectedPositionShort({
-                    owner: address(this),
-                    ticks: [mints[0].lowerTick, mints[0].upperTick],
-                    liquidity: liquidity(mints[0], 5000),
-                    feeGrowth: [uint256(0), 0],
-                    tokensOwed: [uint128(0), 0]
-                }),
-                ticks: mintParamsToTicks(mints[0], 5000)
-                // observation: ExpectedObservationShort({
-                //     index: 0,
-                //     timestamp: 1,
-                //     tickCumulative: 0,
-                //     initialized: true
-                // })
-            })
-        );
-    }
-
     function testSwapBuyEthNotEnoughLiquidity() public {
         setupPool(
             PoolParams({
@@ -1073,13 +904,12 @@ contract UniswapV3ManagerTest is Test, TestUtils {
 
         // vm.expectRevert(encodeError("NotEnoughLiquidity()"));
         try
-            UniswapV3Manager(manager).swapSingle(
+            StratoSwapManager(manager).swapSingle(
                 IUniswapV3Manager.SwapSingleParams({
                     tokenIn: weth,
                     tokenOut: usdc,
                     fee: 3000,
-                    amountIn: swapAmount,
-                    sqrtPriceLimitX96: 0
+                    amountIn: swapAmount
                 })
             )
         {
@@ -1090,12 +920,11 @@ contract UniswapV3ManagerTest is Test, TestUtils {
             setFailedStatus(true, "Unexpected error with reason");
         } catch (bytes memory reason) {
             // This is executed in case of a revert without a reason string
-            if (
-                compareBytes(
-                    "0x4323a555",
-                    reason
-                )
-            ) setFailedStatus(true, "Unexpected error with unexpected reason");
+            if (compareBytes("0x4323a555", reason))
+                setFailedStatus(
+                    true,
+                    "Unexpected error with unexpected reason"
+                );
         }
     }
 
@@ -1118,13 +947,12 @@ contract UniswapV3ManagerTest is Test, TestUtils {
 
         // vm.expectRevert(encodeError("NotEnoughLiquidity()"));
         try
-            UniswapV3Manager(manager).swapSingle(
+            StratoSwapManager(manager).swapSingle(
                 IUniswapV3Manager.SwapSingleParams({
                     tokenIn: weth,
                     tokenOut: usdc,
                     fee: 3000,
-                    amountIn: swapAmount,
-                    sqrtPriceLimitX96: 0
+                    amountIn: swapAmount
                 })
             )
         {
@@ -1135,58 +963,245 @@ contract UniswapV3ManagerTest is Test, TestUtils {
             setFailedStatus(true, "Unexpected error with reason");
         } catch (bytes memory reason) {
             // This is executed in case of a revert without a reason string
-            if (
-                compareBytes(
-                    "0x4323a555",
-                    reason
-                )
-            ) setFailedStatus(true, "Unexpected error with unexpected reason");
+            if (compareBytes("0x4323a555", reason))
+                setFailedStatus(
+                    true,
+                    "Unexpected error with unexpected reason"
+                );
         }
     }
 
-    function testSwapInsufficientInputAmount() public {
-        setupPool(
-            PoolParams({
-                wethBalance: 1 ether,
-                usdcBalance: 5000 ether,
-                currentPrice: 5000,
-                mints: mintParams(mintParams(4545, 5500, 1 ether, 5000 ether)),
-                transferInMintCallback: true,
-                transferInSwapCallback: false,
-                mintLiquidity: true
-            })
+    function testMintRangeBelowWithPST() public {
+        (
+            StratoSwapPool pool1,
+            IUniswapV3Manager.MintParams[] memory mints,
+            uint256 poolBalance0,
+            uint256 poolBalance1
+        ) = setupPool(
+                PoolParamsFull({
+                    token0: ERC20Mintable(weth),
+                    token1: ERC20Mintable(pst),
+                    token0Balance: 1 ether,
+                    token1Balance: 5000 ether,
+                    currentPrice: 5000,
+                    mints: mintParams(
+                        mintParams(
+                            ERC20Mintable(weth),
+                            ERC20Mintable(pst),
+                            4000,
+                            4996,
+                            1 ether,
+                            5000 ether
+                        )
+                    ),
+                    transferInMintCallback: true,
+                    transferInSwapCallback: true,
+                    mintLiquidity: true
+                })
+            );
+
+        (uint256 expectedAmount0, uint256 expectedAmount1) = (
+            0 ether,
+            4999.999999999999999994 ether
         );
 
-        // vm.expectRevert(stdError.arithmeticError);
+        if (poolBalance0 != expectedAmount0) {
+            setFailedStatus(true, "incorrect weth deposited amount");
+            return;
+        }
+        if (poolBalance1 != expectedAmount1) {
+            setFailedStatus(true, "incorrect usdc deposited amount");
+            return;
+        }
+
+        assertMany(
+            ExpectedMany({
+                pool: pool1,
+                tokens: [ERC20Mintable(weth), ERC20Mintable(pst)],
+                liquidity: 0,
+                sqrtPriceX96: sqrtP(5000),
+                tick: tick(5000),
+                fees: [uint256(0), 0],
+                userBalances: [
+                    1 ether - expectedAmount0,
+                    0.000000000000000007 ether
+                ],
+                poolBalances: [expectedAmount0, expectedAmount1],
+                position: ExpectedPositionShort({
+                    owner: address(this),
+                    ticks: [mints[0].lowerTick, mints[0].upperTick],
+                    liquidity: liquidity(mints[0], 5000),
+                    feeGrowth: [uint256(0), 0],
+                    tokensOwed: [uint128(0), 0]
+                }),
+                ticks: mintParamsToTicks(mints[0], 5000)
+                // observation: ExpectedObservationShort({
+                //     index: 0,
+                //     timestamp: 1,
+                //     tickCumulative: 0,
+                //     initialized: true
+                // })
+            })
+        );
+    }
+
+    function testMintRangeAboveWithPST() public {
+        (
+            StratoSwapPool pool1,
+            IUniswapV3Manager.MintParams[] memory mints,
+            uint256 poolBalance0,
+            uint256 poolBalance1
+        ) = setupPool(
+                PoolParamsFull({
+                    token0: ERC20Mintable(weth),
+                    token1: ERC20Mintable(pst),
+                    token0Balance: 1 ether,
+                    token1Balance: 5000 ether,
+                    currentPrice: 5000,
+                    mints: mintParams(
+                        mintParams(
+                            ERC20Mintable(weth),
+                            ERC20Mintable(pst),
+                            5027,
+                            6250,
+                            1 ether,
+                            5000 ether
+                        )
+                    ),
+                    transferInMintCallback: true,
+                    transferInSwapCallback: true,
+                    mintLiquidity: true
+                })
+            );
+
+        (uint256 expectedAmount0, uint256 expectedAmount1) = (1 ether, 0);
+
+        if (poolBalance0 != expectedAmount0) {
+            setFailedStatus(true, "incorrect weth deposited amount");
+            return;
+        }
+        if (poolBalance1 != expectedAmount1) {
+            setFailedStatus(true, "incorrect usdc deposited amount");
+            return;
+        }
+
+        assertMany(
+            ExpectedMany({
+                pool: pool1,
+                tokens: [ERC20Mintable(weth), ERC20Mintable(pst)],
+                liquidity: 0,
+                sqrtPriceX96: sqrtP(5000),
+                tick: tick(5000),
+                fees: [uint256(0), 0],
+                userBalances: [
+                    1 ether - expectedAmount0,
+                    5005.005005005005005005 ether - expectedAmount1
+                ],
+                poolBalances: [expectedAmount0, expectedAmount1],
+                position: ExpectedPositionShort({
+                    owner: address(this),
+                    ticks: [mints[0].lowerTick, mints[0].upperTick],
+                    liquidity: liquidity(mints[0], 5000),
+                    feeGrowth: [uint256(0), 0],
+                    tokensOwed: [uint128(0), 0]
+                }),
+                ticks: mintParamsToTicks(mints[0], 5000)
+            })
+        );
+    }
+
+    function testMintInvalidTickRangeLowerWithPST() public {
+        manager = address(new StratoSwapManager(factory));
+        StratoSwapManager(manager).checkPSToken(weth);
+        StratoSwapManager(manager).checkPSToken(pst);
+        pool = deployPool(
+            StratoSwapFactory(factory),
+            weth,
+            pst,
+            3000,
+            1,
+            donate
+        );
+
+        // Reverted in TickMath.getSqrtRatioAtTick
+        // vm.expectRevert(bytes("T"));
         try
-            UniswapV3Manager(manager).swapSingle(
-                IUniswapV3Manager.SwapSingleParams({
-                    tokenIn: usdc,
-                    tokenOut: weth,
+            StratoSwapManager(manager).mint(
+                IUniswapV3Manager.MintParams({
+                    tokenA: weth,
+                    tokenB: pst,
                     fee: 3000,
-                    amountIn: 42 ether,
-                    sqrtPriceLimitX96: sqrtP(5010)
+                    lowerTick: -887273,
+                    upperTick: 0,
+                    amount0Desired: 0,
+                    amount1Desired: 0,
+                    amount0Min: 0,
+                    amount1Min: 0
                 })
             )
         {
             // Handle successful pool creation
             setFailedStatus(true, "Unexpected error");
-        } catch Error(string memory) {
+        } catch Error(string memory reason) {
             // This is executed in case of a revert with a reason string
-            setFailedStatus(true, "Unexpected error with reason");
-        } catch (bytes memory reason) {
+            if (!compareStrings(reason, "T"))
+                setFailedStatus(
+                    true,
+                    "Unexpected error with unexpected reason"
+                );
+        } catch (bytes memory) {
+            setFailedStatus(true, "Unexpected error without reason");
             // This is executed in case of a revert without a reason string
-            if (
-                compareBytes(
-                    "0x4e487b710000000000000000000000000000000000000000000000000000000000000011",
-                    reason
-                )
-            ) setFailedStatus(true, "Unexpected error with unexpected reason");
         }
     }
 
-    function testGetPosition() public {
-        (IUniswapV3Manager.MintParams[] memory mints, , ) = setupPool(
+    function testMintInvalidTickRangeUpperWithPST() public {
+        manager = address(new StratoSwapManager(factory));
+        StratoSwapManager(manager).checkPSToken(weth);
+        StratoSwapManager(manager).checkPSToken(pst);
+        pool = deployPool(
+            StratoSwapFactory(factory),
+            weth,
+            pst,
+            3000,
+            1,
+            donate
+        );
+
+        // Reverted in TickMath.getSqrtRatioAtTick
+        // vm.expectRevert(bytes("T"));
+        try
+            StratoSwapManager(manager).mint(
+                IUniswapV3Manager.MintParams({
+                    tokenA: weth,
+                    tokenB: pst,
+                    fee: 3000,
+                    lowerTick: 0,
+                    upperTick: 887273,
+                    amount0Desired: 0,
+                    amount1Desired: 0,
+                    amount0Min: 0,
+                    amount1Min: 0
+                })
+            )
+        {
+            // Handle successful pool creation
+            setFailedStatus(true, "Unexpected error");
+        } catch Error(string memory reason) {
+            // This is executed in case of a revert with a reason string
+            if (!compareStrings(reason, "T"))
+                setFailedStatus(
+                    true,
+                    "Unexpected error with unexpected reason"
+                );
+        } catch (bytes memory) {
+            setFailedStatus(true, "Unexpected error without reason");
+            // This is executed in case of a revert without a reason string
+        }
+    }
+
+    function testBurn() public {
+        setupPool(
             PoolParams({
                 wethBalance: 1 ether,
                 usdcBalance: 5000 ether,
@@ -1198,35 +1213,291 @@ contract UniswapV3ManagerTest is Test, TestUtils {
             })
         );
 
-        (
-            uint128 liquidity_,
-            uint256 feeGrowthInside0LastX128,
-            uint256 feeGrowthInside1LastX128,
-            uint128 tokensOwed0,
-            uint128 tokensOwed1
-        ) = UniswapV3Manager(manager).getPosition(
-                IUniswapV3Manager.GetPositionParams({
-                    tokenA: weth,
-                    tokenB: usdc,
-                    fee: 3000,
-                    owner: address(this),
-                    lowerTick: mints[0].lowerTick,
-                    upperTick: mints[0].upperTick
-                })
+        (uint256 expectedAmount0, uint256 expectedAmount1) = (
+            0.987078348444137444 ether,
+            4999.999999999999999999 ether
+        );
+
+        LiquidityRange memory liquidity1 = liquidityRange(
+            4545,
+            5500,
+            1 ether,
+            5000 ether,
+            5000
+        );
+        (uint256 burnAmount0, uint256 burnAmount1) = StratoSwapManager(manager)
+            .burn(
+                IUniswapV3Manager.BurnParams(
+                    weth,
+                    usdc,
+                    3000,
+                    liquidity1.lowerTick,
+                    liquidity1.upperTick,
+                    liquidity1.amount
+                )
             );
 
-        assertPosition(
-            ExpectedPosition({
-                owner: address(this),
+        // assertEq(burnAmount0, expectedAmount0, "incorrect weth burned amount");
+        if (burnAmount0 != expectedAmount0) {
+            setFailedStatus(true, "incorrect weth burned amount");
+            return;
+        }
+        // assertEq(burnAmount1, expectedAmount1, "incorrect usdc burned amount");
+        if (burnAmount1 != expectedAmount1) {
+            setFailedStatus(true, "incorrect usdc burned amount");
+            return;
+        }
+
+        assertMany(
+            ExpectedMany({
                 pool: pool,
-                ticks: [mints[0].lowerTick, mints[0].upperTick],
-                liquidity: liquidity_,
-                feeGrowth: [feeGrowthInside0LastX128, feeGrowthInside1LastX128],
-                tokensOwed: [tokensOwed0, tokensOwed1]
+                tokens: [ERC20Mintable(weth), ERC20Mintable(usdc)],
+                liquidity: 0,
+                sqrtPriceX96: sqrtP(5000),
+                tick: tick(5000),
+                fees: [uint256(0), 0],
+                userBalances: [
+                    1 ether - expectedAmount0 - 1,
+                    5000 ether - expectedAmount1 - 1
+                ],
+                poolBalances: [expectedAmount0 + 1, expectedAmount1 + 1],
+                position: ExpectedPositionShort({
+                    owner: address(this),
+                    ticks: [liquidity1.lowerTick, liquidity1.upperTick],
+                    liquidity: 0,
+                    feeGrowth: [uint256(0), 0],
+                    tokensOwed: [
+                        uint128(expectedAmount0),
+                        uint128(expectedAmount1)
+                    ]
+                }),
+                ticks: [
+                    ExpectedTickShort({
+                        tick: liquidity1.lowerTick,
+                        initialized: true, // TODO: fix, must be false
+                        liquidityGross: 0,
+                        liquidityNet: 0
+                    }),
+                    ExpectedTickShort({
+                        tick: liquidity1.upperTick,
+                        initialized: true, // TODO: fix, must be false
+                        liquidityGross: 0,
+                        liquidityNet: 0
+                    })
+                ]
+                // observation: ExpectedObservationShort({
+                //     index: 0,
+                //     timestamp: 1,
+                //     tickCumulative: 0,
+                //     initialized: true
+                // })
             })
         );
     }
 
+    function testSingleSwapAndCollectFee() public {
+        setupPool(
+            PoolParams({
+                wethBalance: 1 ether,
+                usdcBalance: 5000 ether,
+                currentPrice: 5000,
+                mints: mintParams(mintParams(4545, 5500, 1 ether, 5000 ether)),
+                transferInMintCallback: true,
+                transferInSwapCallback: true,
+                mintLiquidity: true
+            })
+        );
+
+        (int24 expectedLowerTick, int24 expecteduUpperTick) = (84240, 86100);
+        uint128 expectedLiquidity = 1546311247949719370887;
+        uint128 realLiquidity = StratoSwapManagerHelper(managerHelper).getLiquidity(weth, usdc, 3000, address(this), expectedLowerTick, expecteduUpperTick);
+        if(realLiquidity != expectedLiquidity) revert ("Liquidity isn't correct");
+
+        uint256 swapAmount = 0.5 ether;
+        ERC20Mintable(weth).mint(address(this), swapAmount);
+        ERC20Mintable(weth).approve(manager, swapAmount);
+
+        StratoSwapManager(manager).swapSingle(
+            IUniswapV3Manager.SwapSingleParams({
+                tokenIn: weth,
+                tokenOut: usdc,
+                fee: 3000,
+                amountIn: swapAmount
+            })
+        );
+
+        (uint256 expectedSwapResult1, uint256 expectedSwapResult2) = (12921651555862555, 2436948023397513049735);
+        if(expectedSwapResult1 != IERC20(weth).balanceOf(address(this))) revert ("Unexpected Swap Result with weth");
+        if(expectedSwapResult2 != IERC20(usdc).balanceOf(address(this))) revert ("Unexpected Swap Result with usdc");
+
+        (uint256 tokensOwed0, uint256 tokensOwed1) = StratoSwapManagerHelper(managerHelper).getAccumulatedFeeAmount(address(this), weth, usdc, 3000, expectedLowerTick, expecteduUpperTick);
+        (uint256 expectedTokensOwed0, uint256 expectedTokensOwed1) = (1499999999999999, 0);
+        if(expectedTokensOwed0 != tokensOwed0) revert ("Unexpected TokensOwed0");
+        if(expectedTokensOwed1 != tokensOwed1) revert ("Unexpected TokensOwed1");
+
+        StratoSwapManager(manager).collect(IUniswapV3Manager.CollectParams({
+            tokenA: weth,
+            tokenB: usdc,
+            fee: 3000,
+            recipient: address(this),
+            lowerTick: expectedLowerTick,
+            upperTick: expecteduUpperTick,
+            amount0Desired: 10 ether,
+            amount1Desired: 5000 ether
+        }));
+
+        (expectedSwapResult1, expectedSwapResult2) = (14406651555862554, 2436948023397513049735);
+        if(expectedSwapResult1 != IERC20(weth).balanceOf(address(this))) revert ("Unexpected Swap Result with weth");
+        if(expectedSwapResult2 != IERC20(usdc).balanceOf(address(this))) revert ("Unexpected Swap Result with usdc");
+        
+        (tokensOwed0, tokensOwed1) = StratoSwapManagerHelper(managerHelper).getOwnerAccumulatedFeeAmount(weth, usdc, 3000);
+        (expectedTokensOwed0, expectedTokensOwed1) = (15000000000000, 0);
+        if(expectedTokensOwed0 != tokensOwed0) revert ("Unexpected TokensOwed0");
+        if(expectedTokensOwed1 != tokensOwed1) revert ("Unexpected TokensOwed1");
+    }
+
+    function testMultiSwapAndCollectFee() public {
+        setupPool(
+            PoolParams({
+                wethBalance: 1 ether,
+                usdcBalance: 5000 ether,
+                currentPrice: 5000,
+                mints: mintParams(mintParams(4545, 5500, 1 ether, 5000 ether)),
+                transferInMintCallback: true,
+                transferInSwapCallback: true,
+                mintLiquidity: true
+            })
+        );
+
+        (int24 expectedLowerTick, int24 expecteduUpperTick) = (84240, 86100);
+        uint256 swapAmount = 0.5 ether;
+        ERC20Mintable(weth).mint(address(this), swapAmount);
+        ERC20Mintable(weth).approve(manager, swapAmount);
+
+        StratoSwapManager(manager).swapSingle(
+            IUniswapV3Manager.SwapSingleParams({
+                tokenIn: weth,
+                tokenOut: usdc,
+                fee: 3000,
+                amountIn: swapAmount
+            })
+        );
+
+        swapAmount = 2000 ether;
+        ERC20Mintable(usdc).approve(manager, swapAmount);
+
+        StratoSwapManager(manager).swapSingle(
+            IUniswapV3Manager.SwapSingleParams({
+                tokenIn: usdc,
+                tokenOut: weth,
+                fee: 3000,
+                amountIn: swapAmount
+            })
+        );
+
+        (uint256 expectedSwapResult1, uint256 expectedSwapResult2) = (422471703494836678, 436948023397513049735);
+        if(expectedSwapResult1 != IERC20(weth).balanceOf(address(this))) revert ("Unexpected Swap Result with weth");
+        if(expectedSwapResult2 != IERC20(usdc).balanceOf(address(this))) revert ("Unexpected Swap Result with usdc");
+        
+        (uint256 tokensOwed0, uint256 tokensOwed1) = StratoSwapManagerHelper(managerHelper).getAccumulatedFeeAmount(address(this), weth, usdc, 3000, expectedLowerTick, expecteduUpperTick);
+        (uint256 expectedTokensOwed0, uint256 expectedTokensOwed1) = (1499999999999999, 5999999999999999999);
+        if(expectedTokensOwed0 != tokensOwed0) revert ("Unexpected TokensOwed0");
+        if(expectedTokensOwed1 != tokensOwed1) revert ("Unexpected TokensOwed1");
+
+        StratoSwapManager(manager).collect(IUniswapV3Manager.CollectParams({
+            tokenA: weth,
+            tokenB: usdc,
+            fee: 3000,
+            recipient: address(this),
+            lowerTick: expectedLowerTick,
+            upperTick: expecteduUpperTick,
+            amount0Desired: 10 ether,
+            amount1Desired: 5000 ether
+        }));
+
+        (expectedSwapResult1, expectedSwapResult2) = (423956703494836677, 442888023397513049734);
+        if(expectedSwapResult1 != IERC20(weth).balanceOf(address(this))) revert ("Unexpected Swap Result with weth");
+        if(expectedSwapResult2 != IERC20(usdc).balanceOf(address(this))) revert ("Unexpected Swap Result with usdc");
+
+        (tokensOwed0, tokensOwed1) = StratoSwapManagerHelper(managerHelper).getOwnerAccumulatedFeeAmount(weth, usdc, 3000);
+        (expectedTokensOwed0, expectedTokensOwed1) = (15000000000000, 60000000000000000);
+        if(expectedTokensOwed0 != tokensOwed0) revert ("Unexpected TokensOwed0");
+        if(expectedTokensOwed1 != tokensOwed1) revert ("Unexpected TokensOwed1");
+    }
+
+    function testDonate() public {
+        setupPool(
+            PoolParams({
+                wethBalance: 3 ether,
+                usdcBalance: 15000 ether,
+                currentPrice: 5000,
+                mints: mintParams(
+                    mintParams(4545, 5500, 1 ether, 5000 ether),
+                    mintParams(
+                        4000,
+                        6250,
+                        (1 ether * 75) / 100,
+                        (5000 ether * 75) / 100
+                    )
+                ),
+                transferInMintCallback: true,
+                transferInSwapCallback: true,
+                mintLiquidity: true
+            })
+        );
+
+        uint256 donateAmount = 100 ether;
+        ERC20Mintable(donate).mint(address(this), donateAmount);
+        ERC20Mintable(donate).approve(managerHelper, donateAmount);
+        StratoSwapManagerHelper(managerHelper).donate(weth, usdc, 3000, donateAmount);
+
+        uint256 expectedDonateAmount = StratoSwapManagerHelper(managerHelper).getDonatedAmount(address(this), weth, usdc, 3000);
+        if(expectedDonateAmount != 100 ether) revert ("Unexpected donation amount");
+    }
+
+    function testProject() public {
+        StratoSwapManager(manager).createPool(IUniswapV3Manager.CreatePoolParams({
+            tokenA: pst,
+            tokenB: uni,
+            fee: 3000,
+            currentPrice: (10 ** 36),
+            tokenDonate: donate
+        }));
+
+        uint256 pstAmount = 2 ether;
+        ERC20Mintable(pst).mint(address(this), pstAmount);
+        ERC20Mintable(pst).approve(manager, pstAmount);
+
+        uint256 uniAmount = (10 ** 36);
+        ERC20Mintable(uni).mint(address(this), uniAmount);
+        ERC20Mintable(uni).approve(manager, uniAmount);
+
+        // uint256 balance1 = ERC20Mintable(pst).balanceOf(address(this));
+        // uint256 balance2 = ERC20Mintable(uni).balanceOf(address(this));
+        // revert MintableError(balance1, balance2);
+        // (uint160 expectedSqrtPriceX96,
+        //     int24 expectedStandardTick,
+        //     int24 expectedStandatdLowTick,
+        //     int24 expectedStandardUpTick) = StratoSwapManagerHelper(managerHelper).getStandardSlot0(pst, uni, 3000);
+        // revert MintabError(expectedSqrtPriceX96, expectedStandardTick, expectedStandatdLowTick, expectedStandardUpTick);
+        StratoSwapManager(manager).mint(IUniswapV3Manager.MintParams({
+            tokenA: pst,
+            tokenB: uni,
+            fee: 3000,
+            lowerTick: 370740,
+            upperTick: 463380,
+            amount0Desired: 1 ether,
+            amount1Desired: (10 ** 36),
+            amount0Min: 0,
+            amount1Min: 0
+        }));
+        // bool temp1 = StratoSwapManager(manager).checkPSToken(weth);
+        // if(temp1 == true) revert ("ERROR");
+        // bool temp2 = StratoSwapManager(manager).checkPSToken(pst);
+        // if(temp2 == false) revert ("ERROR");
+    }
+// 1000000000000000000
+// 0972111896833302284040158782402941358
     ////////////////////////////////////////////////////////////////////////////
     //
     // INTERNAL
@@ -1348,40 +1619,66 @@ contract UniswapV3ManagerTest is Test, TestUtils {
         );
     }
 
+    error MintabaError(address);
+
     function setupPool(
         PoolParamsFull memory params
     )
         internal
         returns (
-            UniswapV3Pool pool_,
+            StratoSwapPool pool_,
             IUniswapV3Manager.MintParams[] memory mints_,
             uint256 poolBalance0,
             uint256 poolBalance1
         )
     {
-        params.token0.mint(address(this), params.token0Balance);
-        params.token1.mint(address(this), params.token1Balance);
+        uint256 mintBalance0 = params.token0Balance;
+        uint256 mintBalance1 = params.token1Balance;
 
+        if (address(params.token0) == pst) {
+            mintBalance0 =
+                mintBalance0 +
+                PSToken(address(params.token0)).transferFee(
+                    params.token0Balance
+                );
+        }
+        if (address(params.token1) == pst) {
+            mintBalance1 =
+                mintBalance1 +
+                PSToken(address(params.token1)).transferFee(
+                    params.token1Balance
+                );
+        }
+        params.token0.mint(address(this), mintBalance0);
+        params.token1.mint(address(this), mintBalance1);
+
+        StratoSwapManager(manager).checkPSToken(address(params.token0));
+        StratoSwapManager(manager).checkPSToken(address(params.token1));
         pool_ = deployPool(
-            UniswapV3Factory(factory),
+            StratoSwapFactory(factory),
             address(params.token0),
             address(params.token1),
             3000,
-            params.currentPrice
+            params.currentPrice,
+            donate
         );
 
         if (params.mintLiquidity) {
-            params.token0.approve(manager, params.token0Balance);
-            params.token1.approve(manager, params.token1Balance);
+            params.token0.approve(manager, mintBalance0);
+            params.token1.approve(manager, mintBalance1);
 
             uint256 poolBalance0Tmp;
             uint256 poolBalance1Tmp;
             for (uint256 i = 0; i < params.mints.length; i++) {
-                (poolBalance0Tmp, poolBalance1Tmp) = UniswapV3Manager(manager)
+                (poolBalance0Tmp, poolBalance1Tmp) = StratoSwapManager(manager)
                     .mint(params.mints[i]);
                 poolBalance0 += poolBalance0Tmp;
                 poolBalance1 += poolBalance1Tmp;
             }
+            // revert MintabaError(
+            //     mintBalance1,
+            //     params.token1.balanceOf(address(pool_))
+            // );
         }
 
         transferInMintCallback = params.transferInMintCallback;

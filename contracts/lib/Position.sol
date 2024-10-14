@@ -26,6 +26,29 @@ library Position {
         ];
     }
 
+    function calcAccumalatedAmount(
+        Info storage self,
+        uint256 feeGrowthInside0X128,
+        uint256 feeGrowthInside1X128
+    ) internal view returns (uint256 amount0, uint256 amount1) {
+        uint128 tokenDelta0 = uint128(
+            PRBMath.mulDiv(
+                feeGrowthInside0X128 - self.feeGrowthInside0LastX128,
+                self.liquidity,
+                FixedPoint128.Q128
+            )
+        );
+        uint128 tokenDelta1 = uint128(
+            PRBMath.mulDiv(
+                feeGrowthInside1X128 - self.feeGrowthInside1LastX128,
+                self.liquidity,
+                FixedPoint128.Q128
+            )
+        );
+        amount0 = self.tokensOwed0 + tokenDelta0;
+        amount1 = self.tokensOwed1 + tokenDelta1;
+    }
+
     function update(
         Info storage self,
         int128 liquidityDelta,
